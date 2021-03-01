@@ -56,37 +56,23 @@ impl NickData {
                         let [ip,  city, region, country,
                              isp, lat,  lon,    link    ] = addr_info;
                                      
+                        let mut msg = {
+                            if ip.len() > IPV4_LEN {
+                                format!("\x0313{:-16} {:-39} {}, {} ({}) [{}]",
+                                        nick, address, city, region, country, 
+                                        isp)
+                            } else {
+                                format!("\x0313{:-16} {:-15} {}, {} ({}) [{}]",
+                                        nick, address, city, region, country, 
+                                        isp)
+                            }
+                        };
                         if !account.is_empty() {
-                            let msg = {
-                                if ip.len() > IPV4_LEN {
-                                    format!("\x0313\
-                                            {:-16} {:-39}  {}, {} ({}) [{}] \
-                                             <<{}>>", nick, address, city,
-                                            region, country, isp, account)
-                                } else {
-                                    format!("\x0313\
-                                            {:-16} {:-15}  {}, {} ({}) [{}] \
-                                             <<{}>>", nick, address, city,
-                                            region, country, isp, account)
-                                }
-                            };
-                            self.hc.print(&msg);
-                        } else {
-                            let msg = {
-                                if ip.len() > IPV4_LEN {
-                                    format!("\x0313\
-                                            {:-16} {:-39}  {}, {} ({}) [{}]",
-                                            nick, address, city,
-                                            region, country, isp)
-                                } else {
-                                    format!("\x0313\
-                                            {:-16} {:-15}  {}, {} ({}) [{}]",
-                                            nick, address, city,
-                                            region, country, isp)
-                                }
-                            };
-                            self.hc.print(&msg);
+                            msg.push_str(&format!(" <<{}>>", account));
                         }
+                        
+                        self.hc.print(&msg);
+                        
                     } else {
                         // No IP geolocation available.
                         let msg = format!("\x0313{:-16} {}", nick, address);
