@@ -11,6 +11,8 @@ use std::sync::Condvar;
 use std::sync::Mutex;
 
 use hexchat_api::Hexchat;
+use hexchat_api::Context;
+use hexchat_api::outpth;
 
 use crate::nick_tracker::*;
 use crate::tracker_error::*;
@@ -40,7 +42,8 @@ impl NickData {
                      account : &str,
                      address : &str,
                      network : &str,
-                     tracker : &NickTracker )
+                     channel : &str,
+                     tracker : &NickTracker)
     {
         const IPV4_LEN: usize = 15;
         const IPV6_LEN: usize = 39;
@@ -50,13 +53,14 @@ impl NickData {
         {
                                                  
             for [nick, channel, host, account, address] in &db_entries {
+                let mut msg;
                 if !address.is_empty() {
 
                     if let Ok(addr_info) = tracker.get_ip_addr_info(address) {
                         let [ip,  city, region, country,
                              isp, lat,  lon,    link    ] = addr_info;
                                      
-                        let mut msg = {
+                        msg = {
                             if ip.len() > IPV4_LEN {
                                 format!("\x0313{:-16} {:-39} {}, {} ({}) [{}]",
                                         nick, address, city, region, country, 
@@ -71,18 +75,15 @@ impl NickData {
                             msg.push_str(&format!(" <<{}>>", account));
                         }
                         
-                        self.hc.print(&msg);
-                        
                     } else {
                         // No IP geolocation available.
-                        let msg = format!("\x0313{:-16} {}", nick, address);
-                        self.hc.print(&msg);
+                        msg = format!("\x0313{:-16} {}", nick, address);
                     }
                 } else {
                     // No IP available.
-                    let msg = format!("\x0313{:-16} {}", nick, host);
-                    self.hc.print(&msg);
+                    msg = format!("\x0313{:-16} {}", nick, host);
                 }
+                outpth!(ctx=(network, channel), &msg);
             }
         }
     }

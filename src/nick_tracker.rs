@@ -155,7 +155,7 @@ impl NickTracker {
                                 &account, &address, &network);
                                 
             me.nick_data.print_related(&nick,    &host,    &account, 
-                                       &address, &network, &me);
+                                       &address, &network, &channel, &me);
         });
         Eat::None
     }
