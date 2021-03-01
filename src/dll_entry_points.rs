@@ -67,7 +67,7 @@ fn user_join(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 
 fn user_quit(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 {
-    Eat::None
+    udata.apply(|nt: &NickTracker| { nt.on_user_quit(word) })
 }
 
 fn change_nick(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat

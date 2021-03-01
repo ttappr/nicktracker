@@ -11,6 +11,7 @@ use std::sync::Condvar;
 use std::sync::Mutex;
 
 use crate::nick_tracker::*;
+use crate::tracker_error::*;
 
 #[derive(Clone)]
 pub (crate)
@@ -40,7 +41,7 @@ impl NickData {
         const IPV4_LEN: usize = 15;
         const IPV6_LEN: usize = 39;
         
-        match || -> SQLResult<()> {
+        match || -> Result<(), TrackerError> {
             // Retrieve related entries.
             let db_entries = self.get_db_entries(nick, host, account, 
                                                  address, network)?;
@@ -48,7 +49,7 @@ impl NickData {
             for [nick, channel, host, account, address] in &db_entries {
                 if !address.is_empty() {
 
-                    if let Some(addr_info) = tracker.get_ip_addr_info(address) {
+                    if let Ok(addr_info) = tracker.get_ip_addr_info(address) {
                         let [ip,  city, region, country,
                              isp, lat,  lon,    link    ] = addr_info;
                         
@@ -134,8 +135,8 @@ impl NickData {
             }
             Ok(rec_added)
         }() {
-            Ok(_)  => true,
-            Err(_) => false,
+            Ok(rec_added) => rec_added,
+            Err(_)        => false,
         }
     }
     pub (crate)
@@ -163,23 +164,21 @@ impl NickData {
     }
     
     pub (crate)
-    fn get_ip_addr_info(&self, ip: &str) -> Option<[String;8]> {
-        match || -> SQLResult<[String;8]> {
-            let conn = Connection::open(&self.path)?;
-            
-            // Record data: (ip, city, region, country, isp, lat, lon, link)
-            let row: [String;8] = conn.query_row(
-                r" SELECT * FROM ip_addr_info
-                   WHERE   ip = ?
-                   LIMIT 1
-                ", &[ip], |row| Ok([row.get(0)?, row.get(1)?, row.get(2)?,
-                                    row.get(3)?, row.get(4)?, row.get(5)?,
-                                    row.get(6)?, row.get(7)?]))?;
-            Ok(row)
-        }() {
-            Ok(row)  => Some(row),
-            Err(err) => None,
-        }
+    fn get_ip_addr_info(&self, 
+                        ip: &str
+                       ) -> Result<[String;8], TrackerError> 
+    {
+        let conn = Connection::open(&self.path)?;
+        
+        // Record data: (ip, city, region, country, isp, lat, lon, link)
+        let row: [String;8] = conn.query_row(
+            r" SELECT * FROM ip_addr_info
+               WHERE   ip = ?
+               LIMIT 1
+            ", &[ip], |row| Ok([row.get(0)?, row.get(1)?, row.get(2)?,
+                                row.get(3)?, row.get(4)?, row.get(5)?,
+                                row.get(6)?, row.get(7)?]))?;
+        Ok(row)
     }
     
     fn get_db_entries(&self,
@@ -188,17 +187,15 @@ impl NickData {
                       account   : &str,
                       address   : &str,
                       network   : &str
-                     ) -> SQLResult<Vec<[String;5]>>
+                     ) -> Result<Vec<[String;5]>, TrackerError>
     {
         let conn = Connection::open(&self.path)?;
         let nick_expr = {
             // Form the regular expression that'll be used to scan through
             // the database.
             if !nick.to_lowercase().contains("guest") {
-                let regex = &self.trunc_expr;
-
-                let mut nick_exp = regex.replace(nick, "").to_string();
-                
+                let mut nick_exp = self.trunc_expr.replace(nick, "")
+                                                  .to_string();
                 if nick_exp.len() < 4 {
                     nick_exp = nick[0..4].to_string();
                 } else {
@@ -209,15 +206,13 @@ impl NickData {
                 Regex::new(nick).unwrap()
             }
         };
-        // Register a custom matching function with SQLite3 to help find nicks
-        // that fuzzily match.
+        // Register a custom matching function with SQLite3
+        // to help find nicks that fuzzily match.
         conn.create_scalar_function(
             "NICKEXPR",
             1,
             FunctionFlags::SQLITE_UTF8  | FunctionFlags::SQLITE_DETERMINISTIC,
             move |ctx| {
-                assert_eq!(ctx.len(), 1, 
-                           "called with unexpected number of arguments");
                 let text = ctx.get_raw(0).as_str().unwrap();
                 Ok(nick_expr.is_match(text))
             })?;
