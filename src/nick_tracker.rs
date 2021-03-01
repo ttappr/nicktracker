@@ -67,7 +67,7 @@ impl NickTracker {
             ipv4_expr   : Regex::new(IPV4_EXPR).unwrap(),
             dlim_expr   : Regex::new(DLIM_EXPR).unwrap(),
             chan_set    : HashSet::<ChanData>::new(),
-            nick_data   : NickData::new(),
+            nick_data   : NickData::new(hc),
             http_agent  : AgentBuilder::new()
                           .timeout_read(
                               Duration::from_secs(SERVER_TIMEOUT)

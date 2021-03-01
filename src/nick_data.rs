@@ -10,20 +10,24 @@ use rusqlite::Rows;
 use std::sync::Condvar;
 use std::sync::Mutex;
 
+use hexchat_api::Hexchat;
+
 use crate::nick_tracker::*;
 use crate::tracker_error::*;
 
 #[derive(Clone)]
 pub (crate)
 struct NickData {
+    hc         : &'static Hexchat,
     trunc_expr : Regex,
     path       : String,
 }
 
 impl NickData {
     pub (crate)
-    fn new() -> Self {
+    fn new(hc: &'static Hexchat) -> Self {
         NickData { 
+            hc,
             path: String::new(), 
             trunc_expr : Regex::new(r"[0-9_\-|]{0,3}$").unwrap(),
         }
@@ -41,10 +45,9 @@ impl NickData {
         const IPV4_LEN: usize = 15;
         const IPV6_LEN: usize = 39;
         
-        match || -> Result<(), TrackerError> {
-            // Retrieve related entries.
-            let db_entries = self.get_db_entries(nick, host, account, 
-                                                 address, network)?;
+        if let Ok(db_entries) = self.get_db_entries(nick, host, account, 
+                                                    address, network)
+        {
                                                  
             for [nick, channel, host, account, address] in &db_entries {
                 if !address.is_empty() {
@@ -52,26 +55,53 @@ impl NickData {
                     if let Ok(addr_info) = tracker.get_ip_addr_info(address) {
                         let [ip,  city, region, country,
                              isp, lat,  lon,    link    ] = addr_info;
-                        
-                        let ip_len = if ip.len() > IPV4_LEN { IPV6_LEN } 
-                                     else                   { IPV4_LEN };
                                      
                         if !account.is_empty() {
-                            
+                            let msg = {
+                                if ip.len() > IPV4_LEN {
+                                    format!("\x0313\
+                                            {:-16} {:-39}  {}, {} ({}) [{}] \
+                                             <<{}>>", nick, address, city,
+                                            region, country, isp, account)
+                                } else {
+                                    format!("\x0313\
+                                            {:-16} {:-15}  {}, {} ({}) [{}] \
+                                             <<{}>>", nick, address, city,
+                                            region, country, isp, account)
+                                }
+                            };
+                            self.hc.print(&msg);
+                        } else {
+                            let msg = {
+                                if ip.len() > IPV4_LEN {
+                                    format!("\x0313\
+                                            {:-16} {:-39}  {}, {} ({}) [{}]",
+                                            nick, address, city,
+                                            region, country, isp)
+                                } else {
+                                    format!("\x0313\
+                                            {:-16} {:-15}  {}, {} ({}) [{}]",
+                                            nick, address, city,
+                                            region, country, isp)
+                                }
+                            };
+                            self.hc.print(&msg);
                         }
+                    } else {
+                        // No IP geolocation available.
+                        let msg = format!("\x0313{:-16} {}", nick, address);
+                        self.hc.print(&msg);
                     }
                 } else {
                     // No IP available.
+                    let msg = format!("\x0313{:-16} {}", nick, host);
+                    self.hc.print(&msg);
                 }
             }
-            Ok(())
-        }() {
-            Ok(_)  => {},
-            Err(_) => {},
         }
     }
     
-    fn create_database(&self) -> SQLResult<()> {
+    fn create_database(&self) -> Result<(), TrackerError> {
         let conn = Connection::open(&self.path)?;
         conn.execute(
             r" CREATE TABLE users (
