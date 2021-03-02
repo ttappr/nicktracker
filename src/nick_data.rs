@@ -13,6 +13,7 @@ use std::sync::Mutex;
 use hexchat_api::Hexchat;
 use hexchat_api::Context;
 use hexchat_api::outpth;
+use hexchat_api::main_thread;
 
 use crate::nick_tracker::*;
 use crate::tracker_error::*;
@@ -51,15 +52,13 @@ impl NickData {
         if let Ok(db_entries) = self.get_db_entries(nick, host, account, 
                                                     address, network)
         {
-                                                 
+            let mut lines = vec![];
             for [nick, channel, host, account, address] in &db_entries {
                 let mut msg;
                 if !address.is_empty() {
-
                     if let Ok(addr_info) = tracker.get_ip_addr_info(address) {
                         let [ip,  city, region, country,
                              isp, lat,  lon,    link    ] = addr_info;
-                                     
                         msg = {
                             if ip.len() > IPV4_LEN {
                                 format!("\x0313{:-16} {:-39} {}, {} ({}) [{}]",
@@ -74,7 +73,6 @@ impl NickData {
                         if !account.is_empty() {
                             msg.push_str(&format!(" <<{}>>", account));
                         }
-                        
                     } else {
                         // No IP geolocation available.
                         msg = format!("\x0313{:-16} {}", nick, address);
@@ -83,7 +81,27 @@ impl NickData {
                     // No IP available.
                     msg = format!("\x0313{:-16} {}", nick, host);
                 }
-                outpth!(ctx=(network, channel), &msg);
+                // Save the line for printing from the main thread.
+                lines.push(msg);
+            }
+            if !lines.is_empty() {
+                let network = network.to_string();
+                let channel = channel.to_string();
+                main_thread(move |hc| {
+                    if let Some(ctx) = hc.find_context(&network, &channel) {
+                        if let Ok(_) = ctx.set() {
+                            for line in &lines {
+                                hc.print(&line);
+                            }
+                        } else {
+                            hc.print("⚠️\tFailed to set context while \
+                                      printing nick records.");
+                        }
+                    } else {
+                        hc.print("⚠️\tFailed to get context while \
+                                  printing nick records.");
+                    }
+                });
             }
         }
     }
@@ -218,9 +236,9 @@ impl NickData {
                 } else {
                     nick_exp.push_str(r"[0-9_\-|]{0,3}$");
                 }
-                Regex::new(&nick_exp).unwrap()
+                Regex::new(&nick_exp)?
             } else {
-                Regex::new(nick).unwrap()
+                Regex::new(nick)?
             }
         };
         // Register a custom matching function with SQLite3

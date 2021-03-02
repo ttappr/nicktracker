@@ -13,10 +13,11 @@ pub enum TrackerError {
     IOError         (Box<dyn error::Error>),
     JsonError       (Box<dyn error::Error>),
     ListError       (Box<dyn error::Error>),
+    RegexError      (Box<dyn error::Error>),
     WebError        (Box<dyn error::Error>),
     IPLookupError   (String),
     JsonFmtError    (String),
-    NoContextError  (String),
+    NoneError       (String),
 }
 
 impl error::Error for TrackerError {
@@ -38,13 +39,19 @@ impl fmt::Display for TrackerError {
             DatabaseError   (err) |
             IOError         (err) |
             JsonError       (err) |
+            RegexError      (err) |
             ListError       (err) |
             WebError        (err) => write!(f, "Tracker Error: {}", &**err),
             JsonFmtError    (msg) => write!(f, "Tracker Error: {}", msg),
             IPLookupError   (msg) => write!(f, "IP Lookup Error: {}", msg),
-            NoContextError  (msg) => write!(f, "Context not found: {}", msg),
-
+            NoneError       (msg) => write!(f, "None Error: {}", msg),
         }
+    }
+}
+
+impl From<regex::Error> for TrackerError {
+    fn from(error: regex::Error) -> Self {
+        DatabaseError(Box::new(error))
     }
 }
 

@@ -133,14 +133,22 @@ impl NickTracker {
         if !self.is_active() {
             return Eat::None;
         }
-        let account = if word.len() > 3 { word[3].clone() } 
-                      else              { String::new()   };
+        let account = if word.len() > 3 { 
+            word[3].clone() 
+        } else { 
+            String::new()
+        };
         let (nick, channel, host) = (word[0].clone(), word[1].clone(),
                                      word[2].clone());
-        let (network, channel) = self.get_chan_data();
-        let address            = self.get_ip_addr(&host);
-        let me                 = self.clone();
+        let (network, channel)    = self.get_chan_data();
+        let address               = self.get_ip_addr(&host);
+        let me                    = self.clone();
         
+        // This is really the only operation that makes sense to put on another
+        // thread. Retrieving a bunch of records from the database and 
+        // preparing them for printing, along with potential requests to
+        // a web service for geolocation data can take time. Putting it on
+        // a thread will keep the Hexchat GUI from halting.
         thread::spawn(move || {
             let (nw, ch, nk) = (network.clone(), channel.clone(), nick.clone());
         
