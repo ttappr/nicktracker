@@ -12,11 +12,13 @@ use std::sync::Mutex;
 
 use hexchat_api::Hexchat;
 use hexchat_api::Context;
+use hexchat_api::outp;
 use hexchat_api::outpth;
 use hexchat_api::main_thread;
 
 use crate::nick_tracker::*;
 use crate::tracker_error::*;
+use crate::tor::*;
 
 #[derive(Clone)]
 pub (crate)
@@ -87,38 +89,25 @@ impl NickData {
             if !lines.is_empty() {
                 let network = network.to_string();
                 let channel = channel.to_string();
-                main_thread(move |hc| -> Result<(), TrackerError> {
-                    /*
-                    let orig_ctx = hc.get_context().tor()?;
-                    let ctx      = hc.find_context(&network, &channel);
-                    ctx.set()?;
-                    for line in &lines {
-                        hc.print(&line);
-                    }
-                    orig_ctx.set()?;
-                    */
-                    if let Some(orig_ctx) = hc.get_context() {
-                        if let Some(ctx) = hc.find_context(&network, &channel) {
-                            if let Ok(_) = ctx.set() {
-                                for line in &lines {
-                                    hc.print(&line);
-                                }
-                                if let Ok(_) = orig_ctx.set() {
-                                    // A nice gratuitious "pyramid of doom".
-                                    hc.print("⚠️\tCouldn't restore context \
-                                              while printing nick records.");
-                                }
-                            } else {
-                                hc.print("⚠️\tFailed to set context while \
-                                          printing nick records.");
-                            }
-                        } else {
-                            hc.print("⚠️\tFailed to get context while \
-                                      printing nick records.");
+
+                main_thread(move |hc| {
+                    match || -> Result<(), TrackerError> {
+                        let orig_ctx = hc.get_context().tor()?;
+                        let ctx      = hc.find_context(&network, 
+                                                       &channel).tor()?;
+                        ctx.set()?;
+                        for line in &lines {
+                            hc.print(&line);
                         }
-                    } else {
-                        hc.print("⚠️\tFailed to get the current context while \
-                                  printing nick records.");
+                        orig_ctx.set()?;
+                        Ok(())
+                    }() {
+                        Err(err) => {
+                            hc.print(&format!("⚠️\tContext error encountered \
+                                               while printing nick records: {}", 
+                                               err));
+                        },
+                        _ => {},
                     }
                 });
             }

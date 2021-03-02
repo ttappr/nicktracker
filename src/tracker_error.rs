@@ -6,7 +6,7 @@ use std::fmt;
 
 use TrackerError::*;
 
-#[derive(Debug)]
+#[derive(Debug                                                                          )]
 pub enum TrackerError {
     ContextError    (Box<dyn error::Error>),
     DatabaseError   (Box<dyn error::Error>),
@@ -19,7 +19,10 @@ pub enum TrackerError {
     JsonFmtError    (String),
     NoneError       (String),
 }
-
+/*
+unsafe impl Send for TrackerError {}
+unsafe impl Sync for TrackerError {}
+*/
 impl error::Error for TrackerError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
