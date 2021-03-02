@@ -39,7 +39,7 @@ fn plugin_init(hc: &'static Hexchat) -> i32 {
     hc.hook_print("Join",               Norm, user_join,        udata.clone());
     hc.hook_print("Quit",               Norm, user_quit,        udata.clone());
     hc.hook_print("Change Nick",        Norm, change_nick,      udata.clone());
-    hc.hook_print("Your Nick Changing", Norm, your_nick_change, udata.clone());
+    hc.hook_print("Your Nick Changing", Norm, change_nick,      udata.clone());
     
     1
 }
@@ -72,12 +72,7 @@ fn user_quit(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 
 fn change_nick(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 {
-    Eat::None
-}
-
-fn your_nick_change(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
-{
-    Eat::None
+    udata.apply(|nt: &NickTracker| nt.on_user_change_nick(word))
 }
                               
 fn dbtoggle(hc       : &Hexchat,
@@ -97,7 +92,9 @@ fn iplookup(hc       : &Hexchat,
             udata    : &mut UserData
            ) -> Eat
 {
-    Eat::None
+    udata.apply_mut(|nt: &mut NickTracker| { 
+                        nt.on_cmd_ip_lookup(word, word_eol)
+                    })
 }
 
 fn dbupdate(hc       : &Hexchat,

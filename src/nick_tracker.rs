@@ -220,6 +220,57 @@ impl NickTracker {
         }
     }
 
+    pub (crate)
+    fn on_cmd_ip_lookup(&mut self, 
+                        word     : &[String], 
+                        word_eol : &[String]
+                       ) -> Eat  
+    {
+        if word.len() != 2 {
+            self.hc.print("💡\tUsage: IPLOOKUP <IP>");
+        } else {
+            let (netw, chan) = self.get_chan_data();
+            let ip_addr      = word[1].clone();
+            let me           = self.clone();
+            
+            thread::spawn(move || {
+                if let Ok(ip_info) = me.get_ip_addr_info(&ip_addr) {
+
+                    main_thread(move |hc| {
+                    
+                        match || -> Result<(), TrackerError> {
+                            let ctx = hc.find_context(&netw, &chan).tor()?;
+                            let [ip, city, 
+                                 region, country,
+                                 isp, lat, lon, link] = &ip_info;
+                            let msg = 
+                                format!("🌎\tIPLOOKUP ({}): {}, {} ({}) [{}]",
+                                          ip_addr, city, region, country, isp);
+                            ctx.print(&msg)?;
+                            ctx.print(&format!("    MAP: {}", link))?;
+                            Ok(())
+                        }() {
+                            Ok(_) => {},
+                            Err(err) => {
+                                let msg = 
+                                    format!("⚠️\tError while looking up IP: {}",
+                                            err);
+                                hc.print(&msg);
+                            },
+                        }
+                    });
+                } else {
+                    let ip_addr = ip_addr.clone();
+                    main_thread(move |hc| {
+                        hc.print(&format!("🌎\tIPLOOKUP ({}): failed.", 
+                                 &ip_addr));
+                    });
+                }
+            });
+        }
+        Eat::All
+    }
+
     fn get_user_info(&self,
                      user    : &hexchat_api::ListIterator,
                      context : &Context

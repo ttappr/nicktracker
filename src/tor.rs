@@ -82,15 +82,8 @@ impl Tor for Option<hexchat_api::Context> {
     }
 }
 
-// TODO - Change this trait to consume self so I don't have to do the extra
-//        string copy.
-
 impl Tor for Result<Option<String>, hexchat_api::ContextError> {
     type Target = String;
-    
-    // TODO - in hexchat_api fix it so Result<Option<T>, Error> has an error
-    //        for None value and get rid of the Option, so it's just 
-    //        Result<T, Error>. Is this a good idea, or not?
     
     /// Convert `Result<Option<String>, ContextError>` to 
     /// `Result<String, TrackerError>`.
@@ -102,8 +95,8 @@ impl Tor for Result<Option<String>, hexchat_api::ContextError> {
                 match opt {
                     Some(s) => Ok(s.clone()),
                     None => Err(
-                        TrackerError::NoneError("`None` was returned by a \
-                                                 `Context` operation"
+                        TrackerError::NoneError("Failed to retrieve the \
+                                                 requested `Context`."
                                                  .to_string())),
                 }
             },
