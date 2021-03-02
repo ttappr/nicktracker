@@ -87,18 +87,37 @@ impl NickData {
             if !lines.is_empty() {
                 let network = network.to_string();
                 let channel = channel.to_string();
-                main_thread(move |hc| {
-                    if let Some(ctx) = hc.find_context(&network, &channel) {
-                        if let Ok(_) = ctx.set() {
-                            for line in &lines {
-                                hc.print(&line);
+                main_thread(move |hc| -> Result<(), TrackerError> {
+                    /*
+                    let orig_ctx = hc.get_context().tor()?;
+                    let ctx      = hc.find_context(&network, &channel);
+                    ctx.set()?;
+                    for line in &lines {
+                        hc.print(&line);
+                    }
+                    orig_ctx.set()?;
+                    */
+                    if let Some(orig_ctx) = hc.get_context() {
+                        if let Some(ctx) = hc.find_context(&network, &channel) {
+                            if let Ok(_) = ctx.set() {
+                                for line in &lines {
+                                    hc.print(&line);
+                                }
+                                if let Ok(_) = orig_ctx.set() {
+                                    // A nice gratuitious "pyramid of doom".
+                                    hc.print("⚠️\tCouldn't restore context \
+                                              while printing nick records.");
+                                }
+                            } else {
+                                hc.print("⚠️\tFailed to set context while \
+                                          printing nick records.");
                             }
                         } else {
-                            hc.print("⚠️\tFailed to set context while \
+                            hc.print("⚠️\tFailed to get context while \
                                       printing nick records.");
                         }
                     } else {
-                        hc.print("⚠️\tFailed to get context while \
+                        hc.print("⚠️\tFailed to get the current context while \
                                   printing nick records.");
                     }
                 });
