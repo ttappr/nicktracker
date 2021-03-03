@@ -183,18 +183,19 @@ impl NickTracker {
             self.hc.print("💡\tUsage: DBUPDATE <takes no arguments>");
             return Eat::All;
         } 
-        let cd = self.get_chan_data();
+        
         let me = self.clone();
-        let hc = self.hc;
+        let hc = self.hc.threadsafe();
+        let cx = hc.get_context()       
+                   .expect("Context acquisition shouldn't fail.");
         
         thread::spawn(move || {
             match || -> Result<(), TrackerError> {
-                let ts_hex    = hc.threadsafe();
-                let user_list = ts_hex.list_get("users").tor()?;
-                let context   = ts_hex.find_context(&cd.0, &cd.1).tor()?;
-                let mut count = 0;
-                
-                context.print("🤔\tDBUPDATE:")?;
+
+                cx.print("🤔\tDBUPDATE:")?;
+            
+                let mut count     = 0;
+                let     user_list = cx.list_get("users")?;
                 
                 for user in &user_list {
                     let [nick, 
@@ -202,29 +203,30 @@ impl NickTracker {
                          host, 
                          account, 
                          address, 
-                         network] = me.get_user_info_threaded(user, &context)?;
+                         network] = me.get_user_info_threaded(user, &cx)?;
                          
                     if me.nick_data.update(&nick,    &channel, &host,
                                            &account, &address, &network)
                     {
-                        context.print(
+                        cx.print(
                             &format!("+ New record added for user {}.", &nick)
                         )?;
                         count = 1;
                     } else {
                         if count % 200 == 0 {
-                            context.print("- processing...")?;
+                            cx.print("- processing...")?;
                         }
                         count += 1;
                     }
                 }
-                context.print("DBUPDATE Done.\n")?;
+                cx.print("DBUPDATE Done.\n")?;
                 Ok(())
             }() {
                 Err(err) => {
-                    hc.threadsafe().print(
+                    cx.print(
                         &format!("⚠️\tError during update: {}", err)
-                    );
+                    )
+                    .expect("Context print shouldn't fail.");
                 },
                 _ => (),
             }
@@ -300,7 +302,7 @@ impl NickTracker {
             match || -> Result<(), TrackerError> {
                 let context = self.hc.get_context().tor()?;
             
-                for user in context.get_listiter("users")? {
+                for user in context.list_get("users")? {
 
                     let nick = user.get_field("nick").tor()?;
                     
