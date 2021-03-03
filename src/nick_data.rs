@@ -18,8 +18,13 @@ use crate::nick_tracker::*;
 use crate::tracker_error::*;
 use crate::tor::*;
 
+/// How long a thread will wait for the DB to become available if it's locked.
+///
 const DB_BUSY_TIMEOUT: u64 = 5; // Seconds.
 
+/// The `NickData` object interacts with the nickname/user info database.
+/// It handles the queries and other operations.
+///
 #[derive(Clone)]
 pub (crate)
 struct NickData {
@@ -29,6 +34,10 @@ struct NickData {
 }
 
 impl NickData {
+    /// Creates a new `NickData` object. If the database doesn't exist it tries
+    /// to creat it - if unsuccessful, it will panic, but that shouldn't
+    /// happen.
+    ///
     pub (crate)
     fn new(hc: &'static Hexchat) -> Self {
         if let Some(path) = Self::check_database(hc) {
@@ -42,6 +51,16 @@ impl NickData {
         }
     }
     
+    /// Prints the DB records related to the user info given in the paramters.
+    /// # Arguments
+    /// * `nick`    - The nickname to print the related records of.
+    /// * `host`    - The host the user is logged in from.
+    /// * `account` - The user's account, if available. Empty str if not.
+    /// * `address` - The network address of the user.
+    /// * `network` - The Hexchat network of the channel the user is in.
+    /// * `tracker` - The `NickTracker` object.
+    /// * `context` - The context that is bound to the chat the user is in.
+    ///
     pub (crate)
     fn print_related(&self,
                      nick    : &str,
@@ -91,6 +110,9 @@ impl NickData {
         }
     }
     
+    /// Creates a new database with the required tables. One table for user
+    /// info; and another for the resolved geolocation data for IP's. 
+    ///
     fn create_database(path: &str) -> Result<(), TrackerError> {
         let conn = Connection::open(path)?;
         conn.execute(
@@ -108,6 +130,17 @@ impl NickData {
         Ok(())
     }
     
+    /// Adds the user's information to the database if it isn't already there.
+    /// # Arguments
+    /// * `nick`    - The user's nickname.
+    /// * `channel` - The channel name associated with the chat the user is in.
+    /// * `host`    - The host data of the user.
+    /// * `account` - The account name of the user if there is one.
+    /// * `address` - The IP address of the user, if it can be extracted.
+    /// * `network` - The IRC server network name.
+    /// # Returns
+    /// * `true` if the database was modified, `false` if not.
+    ///
     pub (crate)
     fn update(&self,
               nick      : &str, 
@@ -171,6 +204,20 @@ impl NickData {
             },
         }
     }
+    
+    /// Adds IP address and geolocation data to the database so it can be
+    /// queried from there instead of from the web service.
+    /// # Arguments
+    /// * `ip`        - The IP to store.
+    /// * `city`      - The city the host of the IP is located in.
+    /// * `region`    - The region of the IP host.
+    /// * `country`   - The country it resides in.
+    /// * `isp`       - The ISP that owns the IP.
+    /// * `lat`       - The latitude of the host on the map.
+    /// * `lon`       - The longitide of the host.
+    /// # Returns
+    /// * `true` if the database was modified, `false` if not.
+    ////
     pub (crate)
     fn update_ip_addr_info(&self,
                            ip       : &str,
@@ -197,6 +244,13 @@ impl NickData {
         }
     }
     
+    /// Retrieves IP information from the database if it has it.
+    /// # Arguments
+    /// * `ip`  - The IP to get geolocation data for.
+    /// # Returns
+    /// * `Ok([String:8])` is returned if the DB has the data; `Err(err)` if 
+    ///   not, or there was a problem getting the data.
+    ///
     pub (crate)
     fn get_ip_addr_info(&self, 
                         ip: &str
@@ -216,6 +270,20 @@ impl NickData {
         Ok(row)
     }
     
+    /// Gets DB entries for the intended user. These entries can be related
+    /// to each other by similarities in their records. The logic is a bit
+    /// fuzzy on how the query works.
+    ///
+    /// * `nick`    - The nickname of the user.
+    /// * `host`    - The host of the user.
+    /// * `account` - The user's account name.
+    /// * `address` - The users IP address.
+    /// * `network` - The IRC network the user is logged in to.
+    /// # Returns
+    /// * `Ok(Vec<[String:5]>)` holding "matching" records for the user. These
+    ///   may identify other accounts they use, places near where they lived
+    ///   etc. `Err(err)` is returned if there was a problem finding records.
+    ///
     fn get_db_entries(&self,
                       nick      : &str,
                       host      : &str,
@@ -296,6 +364,10 @@ impl NickData {
         Ok(vrows)
     }
     
+    /// This checks for the existence of the database, and creates it if it
+    /// doesn't exist. It will try and determine where the `addons` folder is
+    /// on the user's system in an OS agnostic way.
+    ///
     fn check_database(hc: &Hexchat) -> Option<String> {
         let addons_path = Path::new(&hc.get_info("xchatdir")
                                        .expect("Unable to locate Hexchat's \

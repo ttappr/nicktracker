@@ -21,7 +21,8 @@ visibly align the data if the Hexchat window is stretched wide enough so
 there isn't much text wrapping on the output.
 
 *Note: Mar 3, 21 - on this day or prior, the entries added to the DB may have
-bad IP info. This can be fixed with this query and a commit.*
+bad IP info. This can be fixed with this query and a commit - or just remove
+the `~/.config/hexchat/addons/nicktracker-db.sqlite3` file and start over.*
 ```sql
 DELETE
 FROM ip_addr_info

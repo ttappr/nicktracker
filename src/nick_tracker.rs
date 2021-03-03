@@ -50,6 +50,9 @@ type ChanData = (String, String);
 ///
 type ChanSet  = HashSet<ChanData>;
 
+/// The primary struct/class of the tracker. It provides handlers for the
+/// registered commands.
+///
 #[derive(Clone)]
 pub (crate) 
 struct NickTracker {
@@ -63,6 +66,10 @@ struct NickTracker {
 }
 
 impl NickTracker {
+    /// Creates a new `NickTracker` - this is called in `dll_entry_points.rs`
+    /// then the methods below are wrapped and registered as the user visible
+    /// commands in Hexchat.
+    /// 
     pub (crate)
     fn new(hc: &'static Hexchat) -> Self {
         NickTracker { 
@@ -78,26 +85,40 @@ impl NickTracker {
                           ).build(),
         }
     }
+    
+    /// "Activates" the window the user currently is interacting with.
+    ///
     fn activate(&mut self) {
         let chan_data = self.get_chan_data();
         self.chan_set.insert(chan_data);
         self.write("🔎\tNick Tracker enabled for this channel.");
     }
+    
+    /// "Deactivates" the window the user is currently interacting with.
+    ///
     fn deactivate(&mut self) {
         let chan_data = self.get_chan_data();
         self.chan_set.remove(&chan_data);
         self.write("🔎\tNick Tracker disabled for this channel.");
     }
+    
+    /// Determines if the current window has been activated.
+    ///
     fn is_active(&self) -> bool {
         let chan_data = self.get_chan_data();
         self.chan_set.contains(&chan_data)
     }
     
+    /// Outputs text to the current active Hexchat window.
+    ///
     pub (crate)
     fn write(&self, msg: &str) {
         self.hc.print(msg);
     }
     
+    /// Like `write()` but takes a `Context` reference which sends the text
+    /// to the window associated with that context.
+    ///
     pub (crate)
     fn write_ctx(&self, msg: &str, ctx: &Context) {
         if ctx.print(msg).is_err() {
@@ -106,6 +127,14 @@ impl NickTracker {
         }
     }
     
+    /// Like `write_ctx()` but is save to invoke from other threads with a
+    /// `ThreadSafeContext` to direct output to the window associated with the
+    /// context.
+    /// # Arguments
+    /// * `msg` - The message to print.
+    /// * `ctx` - The thread-safe context which directs the text output to its 
+    ///           associated window.
+    ///
     pub (crate)
     fn write_ts_ctx(&self, msg: &str, ctx: &ThreadSafeContext) {
         if ctx.print(msg).is_err() {
@@ -114,6 +143,12 @@ impl NickTracker {
         }
     }
     
+    /// Returns the `network` name and `channel` name of the currently active
+    /// window.
+    /// # Returns
+    /// * A tuple that holds the network and channel names as strings, in that
+    ///   order.
+    ///
     fn get_chan_data(&self) -> (String, String) {
         // These operations shouldn't fail if this is executed from main thread.
         let network = self.hc.get_info("network").unwrap();
@@ -121,6 +156,9 @@ impl NickTracker {
         (network, channel)
     }
     
+    /// Implements the `/DBTOGGLE` command. If the current window is active,
+    /// it sets it inactive - and vice versa.
+    ///
     pub (crate)
     fn on_cmd_dbtoggle(&mut self, 
                        word     : &[String], 
@@ -135,6 +173,16 @@ impl NickTracker {
         Eat::All
     }
     
+    /// Implements the `/IPLOOKUP` user command. This attempts to get the
+    /// geolocation data for the provided IP.
+    /// # Arguments
+    /// * `word`     - The arguments provided from user input.
+    /// * `word_eol` - Catenations of `word`.
+    /// # Output
+    /// * Provides details on the location associated with the IP and gives a
+    ///   clickable web link that opens a Google Maps page zoomed in on that
+    ///   location.
+    ///
     pub (crate)
     fn on_cmd_ip_lookup(&mut self, 
                         word     : &[String], 
@@ -178,6 +226,9 @@ impl NickTracker {
         Eat::All
     }
     
+    /// Implements the `/DBUPDATE` user command. Goes through all the users in
+    /// the channel and adds their info to the database.
+    ///
     pub (crate)
     fn on_cmd_dbupdate(&mut self, 
                         word     : &[String], 
@@ -241,6 +292,10 @@ impl NickTracker {
         Eat::All
     }
     
+    /// Implements `/DBWHO` user command. Given a nickname, it will list
+    /// records that are likely related to it. For instance, past nicks they
+    /// used, different locations they've logged in from, etc.
+    ///
     pub (crate)
     fn on_cmd_dbwho(&mut self,
                     word     : &[String],
@@ -307,6 +362,9 @@ impl NickTracker {
         Eat::All
     }
     
+    /// Implements the callback for the `Join` text event. Gathers the user's
+    /// info and adds it to the database.
+    ///
     pub (crate)
     fn on_user_join(&mut self, 
                     word: &[String]
@@ -345,6 +403,9 @@ impl NickTracker {
         Eat::None
     }
     
+    /// Implements the handler for the `Quit` text event. Does nothing 
+    /// currently.
+    ///
     pub (crate)
     fn on_user_quit(&self, word: &[String]) -> Eat
     {
@@ -355,6 +416,10 @@ impl NickTracker {
         }
     }
     
+    /// Implements the handler for the `Change Nick` text event. The user's
+    /// current nick and the nick they changed to are now associated with
+    /// other records in the database.
+    ///
     pub (crate)
     fn on_user_change_nick(&self, word: &[String]) -> Eat 
     {
@@ -405,6 +470,10 @@ impl NickTracker {
         }
     }
 
+    /// A helper function to gather the Hexchat list field information for a 
+    /// user. It constructs a slice containing the  'nick', 'account',
+    /// 'host', etc.
+    ///
     fn get_user_info(&self,
                      user    : &hexchat_api::ListIterator,
                      context : &Context
@@ -421,6 +490,8 @@ impl NickTracker {
            ])
     }
     
+    /// This is a thread-safe version of `get_user_info()`.
+    ///
     fn get_user_info_ts(&self,
                         user      : &ThreadSafeListIterator,
                         context   : &ThreadSafeContext
@@ -437,6 +508,9 @@ impl NickTracker {
            ])
     }
     
+    /// Normalizes IPv4 and IPv6 addresses to make it easier to relate them
+    /// to other data in the database.
+    ///
     fn get_ip_addr(&self, host: &str) -> String {
     
         if let Some(m) = self.ipv6_expr.find(host) {
@@ -463,6 +537,10 @@ impl NickTracker {
         }
     }
     
+    /// Accesses a geolocation web service to get the location data for
+    /// an IP. If the IP has been looked up before, it can be retrieved from
+    /// the database without having to access the web service.
+    ///
     pub (crate)
     fn get_ip_addr_info(&self, 
                         ip_addr: &str
