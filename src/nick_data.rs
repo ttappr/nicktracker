@@ -114,7 +114,7 @@ impl NickData {
             let mut rec_added = false;
             let     conn      = Connection::open(&self.path)?;
             
-            let num_recs = conn.execute(
+            let mut statement = conn.prepare(
                 r" SELECT * FROM users
                    WHERE   nick    = ?
                      AND   channel = ?
@@ -123,9 +123,16 @@ impl NickData {
                      AND   address = ?
                      AND   network  LIKE ?
                    LIMIT 1
-                ", &[nick, channel, host, account, address, network])?;
-        
-            if num_recs > 0usize {
+                ")?;
+            let mut rows = statement.query(&[nick,    channel, host, 
+                                             account, address, network])?;
+            let found = {
+                match rows.next() {
+                    Ok(opt) => opt.is_some(),
+                    Err(_) => false,
+                }
+             };
+            if found {
                 // Record exists, update it's datetime_seen field.
                 conn.execute(
                     r" UPDATE  users 

@@ -201,9 +201,9 @@ impl NickTracker {
 
                 cx.print("🤔\tDBUPDATE:")?;
             
-                let mut count     = 0;
+                let mut count = 0;
                 let user_list = cx.list_get("users").tor()?;
-                //user_list.next();
+
                 for user in user_list {
                     let [nick, 
                          channel, 
