@@ -9,6 +9,12 @@ this information, it can identify users despite them changing nicknames or
 accounts (in many cases). This addon works best on IRC networks that don't
 mask out the users' IP information in their user information.
 
+It takes a short span of time to build enough of a database for it to start
+giving meaningful information. To start building this database for your
+favorite channel, use the `/DBUPDATE` command to seed the database with the
+current population, then turn on automatic tracking with `/DBTOGGLE` and let
+it do its thing.
+
 ## Hexchat Commands
 * `/DBUPDATE` 
     * Update the database with the users in the current channel.
