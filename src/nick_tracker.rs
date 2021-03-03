@@ -57,6 +57,7 @@ struct NickTracker {
     chan_set    : HashSet::<ChanData>,
     nick_data   : NickData,
     http_agent  : Agent,
+    num_tasks   : i32,
 }
 
 impl NickTracker {
@@ -73,6 +74,7 @@ impl NickTracker {
                           .timeout_read(
                               Duration::from_secs(SERVER_TIMEOUT)
                           ).build(),
+            num_tasks   : 0,
         }
     }
     pub (crate)
@@ -159,6 +161,10 @@ impl NickTracker {
         let cx      = hc.get_context().expect("Context grab shouldn't fail.");    
         
         thread_task(move || {
+            if me.num_tasks > 10 {
+                return;
+            }
+            me.num_tasks += 1;
             match me.get_ip_addr_info(&ip_addr) {
                 Ok(ip_info) => {
                     let [ip, city, 
@@ -178,6 +184,7 @@ impl NickTracker {
                                  &ip_addr, err), &cx);
                 },
             }
+            me.num_tasks -= 1;
         });
         Eat::All
     }
@@ -197,7 +204,10 @@ impl NickTracker {
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread_task(move || {
-
+            if me.num_tasks > 10 {
+                return;
+            }
+            me.num_tasks += 1;
             match || -> Result<(), TrackerError> {
 
                 cx.print("🤔\tDBUPDATE:")?;
@@ -238,6 +248,7 @@ impl NickTracker {
                 },
                 _ => (),
             }
+            me.num_tasks -= 1;
         });
         Eat::All
     }
@@ -260,6 +271,10 @@ impl NickTracker {
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread_task(move || {
+            if me.num_tasks > 10 {
+                return;
+            }
+            me.num_tasks += 1;
             match || -> Result<(), TrackerError> {
                 cx.print(&format!("🕵️\tDBWHO: {}", who))?;
                 let mut found = false;
@@ -300,6 +315,7 @@ impl NickTracker {
                 },
                 _ => {},
             }
+            me.num_tasks -= 1;
         });
         Eat::All
     }
@@ -328,7 +344,10 @@ impl NickTracker {
         let cx      = hc.get_context().unwrap();
         
         thread_task(move || {
-
+            if me.num_tasks > 10 {
+                return;
+            }
+            me.num_tasks += 1;
             me.write_ts_ctx(&format!("🕵️\tUSER JOINED: {}", nick), &cx);
             
             me.nick_data.update(&nick,    &channel, &host, 
@@ -336,6 +355,7 @@ impl NickTracker {
                                 
             me.nick_data.print_related(&nick,    &host,    &account, 
                                        &address, &network, &me, &cx);
+            me.num_tasks -= 1;
         });
         Eat::None
     }
@@ -357,35 +377,47 @@ impl NickTracker {
             Eat::None
         } else {
             let (network, channel) = self.get_chan_data();
-            let old_nick = &word[0];
-            let new_nick = &word[1];
+            let old_nick = word[0].clone();
+            let new_nick = word[1].clone();
             
-            match || -> Result<(), TrackerError> {
-                let context = self.hc.get_context().tor()?;
+            let me = self.clone();
+            let hc = self.hc.threadsafe();
+            let cx = hc.get_context().unwrap();
             
-                for user in context.list_get("users")? {
-
-                    let nick = user.get_field("nick").tor()?;
-                    
-                    if &nick == old_nick || &nick == new_nick {
-                        let [nick, 
-                             channel, 
-                             host, 
-                             account, 
-                             address, 
-                             network] = self.get_user_info(&user, &context)?;
-                             
-                        self.nick_data.update(&new_nick, &channel, &host, 
-                                              &account,  &address, &network);
-                    }
+            thread_task(move || {
+                if me.num_tasks > 10 {
+                    return;
                 }
-                Ok(())
-            }() {
-                Err(err) => {
-                    self.write(&format!("⚠️\t{}", err));
-                },
-                _ => {},
-            }
+                me.num_tasks += 1;
+                match || -> Result<(), TrackerError> {
+                
+                    for user in cx.list_get("users").tor()? {
+
+                        let nick = user.get_field("nick").tor()?;
+                        
+                        if nick == old_nick || nick == new_nick {
+                            let [nick, 
+                                 channel, 
+                                 host, 
+                                 account, 
+                                 address, 
+                                 network] = me.get_user_info_ts(&user, 
+                                                                &cx)?;
+                                 
+                            me.nick_data.update(&new_nick, &channel, 
+                                                &host,     &account,  
+                                                &address,  &network);
+                        }
+                    }
+                    Ok(())
+                }() {
+                    Err(err) => {
+                        me.write(&format!("⚠️\t{}", err));
+                    },
+                    _ => {},
+                }
+                me.num_tasks -= 1;
+            });
             Eat::All
         }
     }

@@ -32,7 +32,9 @@ fn plugin_info() -> PluginInfo {
 fn plugin_init(hc: &'static Hexchat) -> i32 {
     hc.print("Nicktracker loaded");
     
-    unsafe { THREAD_POOL = Some(ThreadPool::new(1)); }
+    unsafe {
+        THREAD_POOL = Some(ThreadPool::new(1)); 
+    }
     
     let udata = UserData::shared(NickTracker::new(hc));
     
