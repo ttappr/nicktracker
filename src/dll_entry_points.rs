@@ -6,12 +6,15 @@ use std::convert::From;
 use std::error::Error;
 use std::fmt;
 use std::thread;
+use threadpool::ThreadPool;
 
 use hexchat_api::*;
 use UserData::*;
 use Priority::*;
 
 use crate::nick_tracker::*;
+
+pub (crate) static mut THREAD_POOL: Option<ThreadPool> = None;
 
 // Register the entry points of the plugin.
 //
@@ -28,6 +31,8 @@ fn plugin_info() -> PluginInfo {
 
 fn plugin_init(hc: &'static Hexchat) -> i32 {
     hc.print("Nicktracker loaded");
+    
+    unsafe { THREAD_POOL = Some(ThreadPool::new(1)); }
     
     let udata = UserData::shared(NickTracker::new(hc));
     
@@ -48,7 +53,23 @@ fn plugin_init(hc: &'static Hexchat) -> i32 {
 ///
 fn plugin_deinit(hc: &Hexchat) -> i32 {
     hc.print("Nicktracker unloaded");
+    unsafe { 
+        if let Some(tp) = &THREAD_POOL {
+            tp.join();
+            THREAD_POOL = None; 
+        }
+    }
     1
+}
+
+pub (crate) fn thread_task<F>(job: F) 
+where F: FnOnce() + Send + 'static
+{
+    unsafe {
+        if let Some(tp) = &THREAD_POOL {
+            tp.execute(job);
+        }
+    }
 }
 
 const DBTOGGLE_HELP : &str = "Toggles nick tracking on/off for the current \

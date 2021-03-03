@@ -16,6 +16,7 @@ use ureq::AgentBuilder;
 use crate::nick_data::*;
 use crate::tor::*;
 use crate::tracker_error::*;
+use crate::dll_entry_points::*;
 
 use hexchat_api::*;
 use TrackerError::*;
@@ -157,7 +158,7 @@ impl NickTracker {
         let hc      = me.hc.threadsafe();
         let cx      = hc.get_context().expect("Context grab shouldn't fail.");    
         
-        thread::spawn(move || {
+        thread_task(move || {
             match me.get_ip_addr_info(&ip_addr) {
                 Ok(ip_info) => {
                     let [ip, city, 
@@ -195,7 +196,7 @@ impl NickTracker {
         let hc = self.hc.threadsafe();
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
-        thread::spawn(move || {
+        thread_task(move || {
 
             match || -> Result<(), TrackerError> {
 
@@ -204,7 +205,7 @@ impl NickTracker {
                 let mut count = 0;
                 let user_list = cx.list_get("users").tor()?;
 
-                for user in user_list {
+                for user in &user_list {
                     let [nick, 
                          channel, 
                          host, 
@@ -258,11 +259,11 @@ impl NickTracker {
         let hc = self.hc.threadsafe();
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
-        thread::spawn(move || {
+        thread_task(move || {
             match || -> Result<(), TrackerError> {
                 cx.print(&format!("🕵️\tDBWHO: {}", who))?;
                 let mut found = false;
-                let     users = cx.list_get("users")?;
+                let     users = cx.list_get("users").tor()?;
                 
                 for user in &users {
                     let account = user.get_field("account").tor()?;
@@ -326,7 +327,7 @@ impl NickTracker {
         let me      = self.clone();
         let cx      = hc.get_context().unwrap();
         
-        thread::spawn(move || {
+        thread_task(move || {
 
             me.write_ts_ctx(&format!("🕵️\tUSER JOINED: {}", nick), &cx);
             

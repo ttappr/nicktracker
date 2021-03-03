@@ -8,6 +8,7 @@ use rusqlite::params;
 use rusqlite::Result as SQLResult;
 use rusqlite::Rows;
 use std::sync::Condvar;
+use std::time::Duration;
 use std::sync::Mutex;
 
 use hexchat_api::*;
@@ -15,6 +16,8 @@ use hexchat_api::*;
 use crate::nick_tracker::*;
 use crate::tracker_error::*;
 use crate::tor::*;
+
+const DB_BUSY_TIMEOUT: u64 = 5; // Seconds.
 
 #[derive(Clone)]
 pub (crate)
@@ -29,7 +32,8 @@ impl NickData {
     fn new(hc: &'static Hexchat) -> Self {
         NickData { 
             hc,
-            path:"/home/todd/.config/hexchat/addons/nicktracker-db.sqlite3".to_string(), 
+            path:"/home/todd/.config/hexchat/addons/\
+                  nicktracker-db.sqlite3".to_string(), 
             trunc_expr : Regex::new(r"[0-9_\-|]{0,3}$").unwrap(),
         }
     }
@@ -114,6 +118,8 @@ impl NickData {
             let mut rec_added = false;
             let     conn      = Connection::open(&self.path)?;
             
+            conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
+            
             let mut statement = conn.prepare(
                 r" SELECT * FROM users
                    WHERE   nick    = ?
@@ -174,6 +180,8 @@ impl NickData {
     {
         match || -> SQLResult<()> {
             let conn = Connection::open(&self.path)?;
+            conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
+
             conn.execute(
                 r" INSERT INTO ip_addr_info
                    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
@@ -191,6 +199,7 @@ impl NickData {
                        ) -> Result<[String;8], TrackerError> 
     {
         let conn = Connection::open(&self.path)?;
+        conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
         
         // Record data: (ip, city, region, country, isp, lat, lon, link)
         let row: [String;8] = conn.query_row(
@@ -212,6 +221,8 @@ impl NickData {
                      ) -> Result<Vec<[String;5]>, TrackerError>
     {
         let conn = Connection::open(&self.path)?;
+        conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
+
         let nick_expr = {
             // Form the regular expression that'll be used to scan through
             // the database.
@@ -219,7 +230,7 @@ impl NickData {
                 let mut nick_exp = self.trunc_expr.replace(nick, "")
                                                   .to_string();
                 if nick_exp.len() < 4 {
-                    nick_exp = nick[0..4].to_string();
+                    nick_exp = nick[0..].to_string();
                 } else {
                     nick_exp.push_str(r"[0-9_\-|]{0,3}$");
                 }
