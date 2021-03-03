@@ -1,6 +1,9 @@
 
 # Hexchat Nick Tracker
 
+**PLEASE USE THIS TOOL WITH MATURITY AND DISCRETION.***
+*Don't be a creeper.*
+
 This addon builds a database of metadata for each visitor to a channel. With 
 this information, it can identify users despite them changing nicknames or
 accounts (in many cases). This addon works best on IRC networks that don't
@@ -22,6 +25,7 @@ It's fairly easy to set up a Rust build environment on your system. You can find
 instructions [here](https://www.rust-lang.org/learn/get-started). The process
 is automated using `rustup`. Once that's in place, simply clone this project 
 and launch the build process:
+* For Linux, if the build fails, installing sqlite3 dev package should fix it.
 * `git clone https://github.com/ttappr/hexchat_api.git`
 * `git clone https://github.com/ttappr/nicktracker.git`
 * `cd nicktracker`
