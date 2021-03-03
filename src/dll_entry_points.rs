@@ -103,7 +103,9 @@ fn dbupdate(hc       : &Hexchat,
             udata    : &mut UserData
            ) -> Eat
 {
-    Eat::None
+    udata.apply_mut(|nt: &mut NickTracker| { 
+                        nt.on_cmd_dbupdate(word, word_eol)
+                    })
 }
 
 fn dbwho(hc       : &Hexchat,

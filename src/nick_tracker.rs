@@ -126,6 +126,113 @@ impl NickTracker {
     }
     
     pub (crate)
+    fn on_cmd_ip_lookup(&mut self, 
+                        word     : &[String], 
+                        word_eol : &[String]
+                       ) -> Eat  
+    {
+        if word.len() != 2 {
+            self.hc.print("💡\tUsage: IPLOOKUP <IP>");
+            return Eat::All;
+        }
+        let (netw, chan) = self.get_chan_data();
+        let ip_addr      = word[1].clone();
+        let me           = self.clone();
+        
+        thread::spawn(move || {
+            if let Ok(ip_info) = me.get_ip_addr_info(&ip_addr) {
+                main_thread(move |hc| {
+                    match || -> Result<(), TrackerError> {
+                        let ctx = hc.find_context(&netw, &chan).tor()?;
+                        let [ip, city, 
+                             region, country,
+                             isp, lat, lon, link] = &ip_info;
+                        ctx.print( 
+                            &format!("🌎\tIPLOOKUP ({}): {}, {} ({}) [{}]",
+                                     ip_addr, city, region, country, isp))?;
+                        ctx.print(
+                            &format!("    MAP: {}", link))?;
+                        Ok(())
+                    }() {
+                        Ok(_) => {},
+                        Err(err) => {
+                            hc.print(
+                                &format!("⚠️\tError while looking \
+                                          up IP: {}", err));
+                        },
+                    }
+                });
+            } else {
+                let ip_addr = ip_addr.clone();
+                main_thread(move |hc| {
+                    hc.print(&format!("🌎\tIPLOOKUP ({}): failed.", 
+                             &ip_addr));
+                });
+            }
+        });
+        Eat::All
+    }
+    
+    pub (crate)
+    fn on_cmd_dbupdate(&mut self, 
+                        word     : &[String], 
+                        word_eol : &[String]
+                       ) -> Eat  
+    {
+        if word.len() > 1 {
+            self.hc.print("💡\tUsage: DBUPDATE <takes no arguments>");
+            return Eat::All;
+        } 
+        let cd = self.get_chan_data();
+        let me = self.clone();
+        let hc = self.hc;
+        
+        thread::spawn(move || {
+            match || -> Result<(), TrackerError> {
+                let ts_hex    = hc.threadsafe();
+                let user_list = ts_hex.list_get("users").tor()?;
+                let context   = ts_hex.find_context(&cd.0, &cd.1).tor()?;
+                let mut count = 0;
+                
+                context.print("🤔\tDBUPDATE:")?;
+                
+                for user in &user_list {
+                    let [nick, 
+                         channel, 
+                         host, 
+                         account, 
+                         address, 
+                         network] = me.get_user_info_threaded(user, &context)?;
+                         
+                    if me.nick_data.update(&nick,    &channel, &host,
+                                           &account, &address, &network)
+                    {
+                        context.print(
+                            &format!("+ New record added for user {}.", &nick)
+                        )?;
+                        count = 1;
+                    } else {
+                        if count % 200 == 0 {
+                            context.print("- processing...")?;
+                        }
+                        count += 1;
+                    }
+                }
+                context.print("DBUPDATE Done.\n")?;
+                Ok(())
+            }() {
+                Err(err) => {
+                    hc.threadsafe().print(
+                        &format!("⚠️\tError during update: {}", err)
+                    );
+                },
+                _ => (),
+            }
+        });
+        Eat::All
+    }
+    
+    pub (crate)
     fn on_user_join(&mut self, 
                     word: &[String]
                    ) -> Eat 
@@ -220,57 +327,6 @@ impl NickTracker {
         }
     }
 
-    pub (crate)
-    fn on_cmd_ip_lookup(&mut self, 
-                        word     : &[String], 
-                        word_eol : &[String]
-                       ) -> Eat  
-    {
-        if word.len() != 2 {
-            self.hc.print("💡\tUsage: IPLOOKUP <IP>");
-        } else {
-            let (netw, chan) = self.get_chan_data();
-            let ip_addr      = word[1].clone();
-            let me           = self.clone();
-            
-            thread::spawn(move || {
-                if let Ok(ip_info) = me.get_ip_addr_info(&ip_addr) {
-
-                    main_thread(move |hc| {
-                    
-                        match || -> Result<(), TrackerError> {
-                            let ctx = hc.find_context(&netw, &chan).tor()?;
-                            let [ip, city, 
-                                 region, country,
-                                 isp, lat, lon, link] = &ip_info;
-                            let msg = 
-                                format!("🌎\tIPLOOKUP ({}): {}, {} ({}) [{}]",
-                                          ip_addr, city, region, country, isp);
-                            ctx.print(&msg)?;
-                            ctx.print(&format!("    MAP: {}", link))?;
-                            Ok(())
-                        }() {
-                            Ok(_) => {},
-                            Err(err) => {
-                                let msg = 
-                                    format!("⚠️\tError while looking up IP: {}",
-                                            err);
-                                hc.print(&msg);
-                            },
-                        }
-                    });
-                } else {
-                    let ip_addr = ip_addr.clone();
-                    main_thread(move |hc| {
-                        hc.print(&format!("🌎\tIPLOOKUP ({}): failed.", 
-                                 &ip_addr));
-                    });
-                }
-            });
-        }
-        Eat::All
-    }
-
     fn get_user_info(&self,
                      user    : &hexchat_api::ListIterator,
                      context : &Context
@@ -286,7 +342,23 @@ impl NickTracker {
             context .get_info    ("network") .tor()?
            ])
     }
-
+    
+    fn get_user_info_threaded(&self,
+                              user      : &ThreadSafeListIterator,
+                              context   : &ThreadSafeContext
+                             ) -> Result<[String;6], TrackerError>
+    {
+        let host = user.get_field("host"   ) .tor()?;
+        
+        Ok([user    .get_field   ("nick"   ) .tor()?,
+            context .get_info    ("channel") .tor()?,
+            host    .clone(),
+            user    .get_field   ("account") .tor()?,
+            self    .get_ip_addr ( &host   ),
+            context .get_info    ("network") .tor()?
+           ])
+    }
+    
     fn get_ip_addr(&self, host: &str) -> String {
     
         if let Some(m) = self.ipv6_expr.find(host) {

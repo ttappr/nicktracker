@@ -76,7 +76,64 @@ impl Tor for Option<hexchat_api::Context> {
         match self {
             Some(ctx) => Ok(ctx.clone()),
             None => Err(
-                TrackerError::NoneError("Context Unavailable.".to_string())
+                TrackerError::NoneError("Context unavailable.".to_string())
+            ),
+        }
+    }
+}
+
+impl Tor for Option<hexchat_api::ThreadSafeContext> {
+    type Target = hexchat_api::ThreadSafeContext;
+    
+    /// Convert an `Option<Context>` to `Result<Context, NoneError>`.
+    ///
+    fn tor(&self) -> Result<Self::Target, TrackerError> 
+    {
+        match self {
+            Some(ctx) => Ok(ctx.clone()),
+            None => Err(
+                TrackerError::NoneError("Context unavailable.".to_string())
+            ),
+        }
+    }
+}
+
+impl Tor for Option<hexchat_api::ThreadSafeListIterator> {
+    type Target = hexchat_api::ThreadSafeListIterator;
+    
+    fn tor(&self) -> Result<Self::Target, TrackerError>
+    {
+        match self {
+            Some(list_iter) => Ok(list_iter.clone()),
+            None => Err(
+                TrackerError::NoneError(
+                    "ListIterator unavailable.".to_string()
+                )),
+        }
+    }
+}
+
+impl Tor for Result<hexchat_api::ThreadSafeFieldValue, hexchat_api::ListError> {
+    type Target = String;
+    
+    fn tor(&self) -> Result<Self::Target, TrackerError>
+    {
+        match self {
+            Ok(field_val) => Ok(field_val.to_string()),
+            Err(err) => Err(TrackerError::from(err.clone())),
+        }
+    }
+}
+
+impl Tor for Option<hexchat_api::ListIterator> {
+    type Target = hexchat_api::ListIterator;
+    
+    fn tor(&self) -> Result<Self::Target, TrackerError>
+    {
+        match self {
+            Some(list_iter) => Ok(list_iter.clone()),
+            None => Err(
+                TrackerError::NoneError("ListIterator unavailable.".to_string())
             ),
         }
     }
