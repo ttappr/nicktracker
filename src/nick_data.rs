@@ -29,7 +29,7 @@ impl NickData {
     fn new(hc: &'static Hexchat) -> Self {
         NickData { 
             hc,
-            path: String::new(), 
+            path:"/home/todd/.config/hexchat/addons/nicktracker-db.sqlite3".to_string(), 
             trunc_expr : Regex::new(r"[0-9_\-|]{0,3}$").unwrap(),
         }
     }
@@ -148,7 +148,10 @@ impl NickData {
             Ok(rec_added)
         }() {
             Ok(rec_added) => rec_added,
-            Err(_)        => false,
+            Err(err) => {
+                self.hc.threadsafe().print(&format!("ERROR: {}", err));
+                false
+            },
         }
     }
     pub (crate)

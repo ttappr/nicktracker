@@ -158,22 +158,24 @@ impl NickTracker {
         let cx      = hc.get_context().expect("Context grab shouldn't fail.");    
         
         thread::spawn(move || {
-            if let Ok(ip_info) = me.get_ip_addr_info(&ip_addr) {
-            
-                let [ip, city, 
-                     region, country,
-                     isp, lat, lon, link] = &ip_info;
-                     
-                me.write_ts_ctx(
-                    &format!("🌎\tIPLOOKUP ({}): {}, {} ({}) [{}]",
-                             ip_addr, city, region, country, isp),
-                    &cx
-                );
-                me.write_ts_ctx(&format!("    MAP: {}", link), &cx);
-                
-            } else {
-                me.write_ts_ctx(
-                    &format!("🌎\tIPLOOKUP ({}): failed.", &ip_addr), &cx);
+            match me.get_ip_addr_info(&ip_addr) {
+                Ok(ip_info) => {
+                    let [ip, city, 
+                         region, country,
+                         isp, lat, lon, link] = &ip_info;
+                         
+                    me.write_ts_ctx(
+                        &format!("🌎\tIPLOOKUP ({}): {}, {} ({}) [{}]",
+                                 ip_addr, city, region, country, isp),
+                        &cx
+                    );
+                    me.write_ts_ctx(&format!("    MAP: {}", link), &cx);
+                },
+                Err(err) => {
+                    me.write_ts_ctx(
+                        &format!("🌎\tIPLOOKUP ({}): failed. {}", 
+                                 &ip_addr, err), &cx);
+                },
             }
         });
         Eat::All
@@ -194,20 +196,21 @@ impl NickTracker {
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread::spawn(move || {
+
             match || -> Result<(), TrackerError> {
 
                 cx.print("🤔\tDBUPDATE:")?;
             
                 let mut count     = 0;
-                let     user_list = cx.list_get("users")?;
-                
-                for user in &user_list {
+                let user_list = cx.list_get("users").tor()?;
+                //user_list.next();
+                for user in user_list {
                     let [nick, 
                          channel, 
                          host, 
                          account, 
                          address, 
-                         network] = me.get_user_info_ts(user, &cx)?;
+                         network] = me.get_user_info_ts(&user, &cx)?;
                          
                     if me.nick_data.update(&nick,    &channel, &host,
                                            &account, &address, &network)
@@ -313,6 +316,7 @@ impl NickTracker {
         } else { 
             String::new()
         };
+        
         let (nick, channel, host) = (word[0].clone(), word[1].clone(),
                                      word[2].clone());
 
@@ -323,6 +327,7 @@ impl NickTracker {
         let cx      = hc.get_context().unwrap();
         
         thread::spawn(move || {
+
             me.write_ts_ctx(&format!("🕵️\tUSER JOINED: {}", nick), &cx);
             
             me.nick_data.update(&nick,    &channel, &host, 
