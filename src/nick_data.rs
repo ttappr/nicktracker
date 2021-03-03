@@ -1,5 +1,6 @@
 
 use fallible_iterator::FallibleIterator;
+use std::path::Path;
 use regex::Regex;
 use rusqlite::Connection;
 use rusqlite::functions::FunctionFlags;
@@ -30,12 +31,42 @@ struct NickData {
 impl NickData {
     pub (crate)
     fn new(hc: &'static Hexchat) -> Self {
-        NickData { 
-            hc,
-            path:"/home/todd/.config/hexchat/addons/\
-                  nicktracker-db.sqlite3".to_string(), 
-            trunc_expr : Regex::new(r"[0-9_\-|]{0,3}$").unwrap(),
+        if let Some(path) = Self::check_database(hc) {
+            NickData { 
+                hc,
+                path, 
+                trunc_expr : Regex::new(r"[0-9_\-|]{0,3}$").unwrap(),
+            }
+        } else {
+            panic!("Unable to create new database for Nick Tracker.");
         }
+    }
+    
+    fn check_database(hc: &Hexchat) -> Option<String> {
+        let addons_path = Path::new(&hc.get_info("xchatdir")
+                                       .unwrap())
+                                       .join("addons")
+                                       .into_boxed_path();
+        let db_path = addons_path.join("nicktracker-db.sqlite3")
+                                 .into_boxed_path();
+        
+        let addons_path_string = addons_path.to_str().unwrap();
+        let db_path_string     = db_path.to_str().unwrap();
+        
+        if !addons_path.exists() {
+            if std::fs::create_dir(addons_path).is_err() {
+                // Unable to create addons folder for Hexchat.
+                return None;
+            }
+        }
+        if !db_path.exists() {
+            if let Err(err) = Self::create_database(&db_path_string) 
+            {
+                // Unable to create database.
+                return None
+            }
+        }
+        Some(db_path_string.to_string())
     }
     
     pub (crate)
@@ -87,8 +118,8 @@ impl NickData {
         }
     }
     
-    fn create_database(&self) -> Result<(), TrackerError> {
-        let conn = Connection::open(&self.path)?;
+    fn create_database(path: &str) -> Result<(), TrackerError> {
+        let conn = Connection::open(path)?;
         conn.execute(
             r" CREATE TABLE users (
                    nick, channel, host, account NOT NULL, address NOT NULL,
