@@ -155,15 +155,15 @@ impl NickTracker {
             self.write("💡\tUsage: IPLOOKUP <IP>");
             return Eat::All;
         }
+        if num_queued_tasks() > MAX_QUEUED_TASKS {
+            return Eat::All;
+        }
         let ip_addr = word[1].clone();
         let me      = self.clone();
         let hc      = me.hc.threadsafe();
         let cx      = hc.get_context().expect("Context grab shouldn't fail.");    
         
         thread_task(move || {
-            if num_queued_tasks() > MAX_QUEUED_TASKS {
-                return;
-            }
             match me.get_ip_addr_info(&ip_addr) {
                 Ok(ip_info) => {
                     let [ip, city, 
@@ -197,14 +197,14 @@ impl NickTracker {
             self.write("💡\tUsage: DBUPDATE <takes no arguments>");
             return Eat::All;
         }
+        if num_queued_tasks() > MAX_QUEUED_TASKS {
+            return Eat::All;
+        }
         let me = self.clone();
         let hc = self.hc.threadsafe();
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread_task(move || {
-            if num_queued_tasks() > MAX_QUEUED_TASKS {
-                return;
-            }
             match || -> Result<(), TrackerError> {
 
                 cx.print("🤔\tDBUPDATE:")?;
@@ -259,6 +259,9 @@ impl NickTracker {
             self.write("💡\tUsage: DBWHO <nick>");
             return Eat::All;
         }
+        if num_queued_tasks() > MAX_QUEUED_TASKS {
+            return Eat::All;
+        }
         let who    = word[1].clone();
         let who_lc = word[1].to_lowercase();
         
@@ -267,9 +270,6 @@ impl NickTracker {
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread_task(move || {
-            if num_queued_tasks() > MAX_QUEUED_TASKS {
-                return;
-            }
             match || -> Result<(), TrackerError> {
                 cx.print(&format!("🕵️\tDBWHO: {}", who))?;
                 let mut found = false;
@@ -322,6 +322,9 @@ impl NickTracker {
         if !self.is_active() {
             return Eat::None;
         }
+        if num_queued_tasks() > MAX_QUEUED_TASKS {
+            return Eat::All;
+        }
         let account = if word.len() > 3 { 
             word[3].clone() 
         } else { 
@@ -338,9 +341,6 @@ impl NickTracker {
         let cx      = hc.get_context().unwrap();
         
         thread_task(move || {
-            if num_queued_tasks() > MAX_QUEUED_TASKS {
-                return;
-            }
             me.write_ts_ctx(&format!("🕵️\tUSER JOINED: {}", nick), &cx);
             
             me.nick_data.update(&nick,    &channel, &host, 
@@ -368,6 +368,9 @@ impl NickTracker {
         if !self.is_active() {
             Eat::None
         } else {
+            if num_queued_tasks() > MAX_QUEUED_TASKS {
+                return Eat::All;
+            }
             let (network, channel) = self.get_chan_data();
             let old_nick = word[0].clone();
             let new_nick = word[1].clone();
@@ -377,9 +380,6 @@ impl NickTracker {
             let cx = hc.get_context().unwrap();
             
             thread_task(move || {
-                if num_queued_tasks() > MAX_QUEUED_TASKS {
-                    return;
-                }
                 match || -> Result<(), TrackerError> {
                 
                     for user in cx.list_get("users").tor()? {
