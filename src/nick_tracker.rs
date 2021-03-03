@@ -91,12 +91,12 @@ impl NickTracker {
     fn activate(&mut self) {
         let chan_data = self.get_chan_data();
         self.chan_set.insert(chan_data);
-        self.hc.print("🔎\tNick Tracker enabled for this channel.");
+        self.write("🔎\tNick Tracker enabled for this channel.");
     }
     fn deactivate(&mut self) {
         let chan_data = self.get_chan_data();
         self.chan_set.remove(&chan_data);
-        self.hc.print("🔎\tNick Tracker disabled for this channel.");
+        self.write("🔎\tNick Tracker disabled for this channel.");
     }
     fn is_active(&self) -> bool {
         let chan_data = self.get_chan_data();
@@ -156,7 +156,7 @@ impl NickTracker {
             return Eat::All;
         }
         if num_queued_tasks() > MAX_QUEUED_TASKS {
-            self.hc.print("⚠️\t\x0313Too many outstanding tasks.");
+            self.write("⚠️\t\x0313Too many outstanding tasks.");
             return Eat::All;
         }
         let ip_addr = word[1].clone();
@@ -199,7 +199,7 @@ impl NickTracker {
             return Eat::All;
         }
         if num_queued_tasks() > MAX_QUEUED_TASKS {
-            self.hc.print("⚠️\t\x0313Too many outstanding tasks.");
+            self.write("⚠️\t\x0313Too many outstanding tasks.");
             return Eat::All;
         }
         let me = self.clone();
@@ -262,7 +262,7 @@ impl NickTracker {
             return Eat::All;
         }
         if num_queued_tasks() > MAX_QUEUED_TASKS {
-            self.hc.print("⚠️\t\x0313Too many outstanding tasks.");
+            self.write("⚠️\t\x0313Too many outstanding tasks.");
             return Eat::All;
         }
         let who    = word[1].clone();
