@@ -36,6 +36,8 @@ const DLIM_EXPR      : &str  = r"(?:^|\.|-|:)0*\B";
 // How long to wait for the IP geolaction server to respond.
 const SERVER_TIMEOUT : u64   = 5;
 
+const MAX_QUEUED_TASKS : usize = 10;
+
 /// Channel data, a tuple of two strings. The first represeting the name of the
 /// network, and the second is the name of the channel.
 ///
@@ -57,7 +59,6 @@ struct NickTracker {
     chan_set    : HashSet::<ChanData>,
     nick_data   : NickData,
     http_agent  : Agent,
-    num_tasks   : i32,
 }
 
 impl NickTracker {
@@ -74,7 +75,6 @@ impl NickTracker {
                           .timeout_read(
                               Duration::from_secs(SERVER_TIMEOUT)
                           ).build(),
-            num_tasks   : 0,
         }
     }
     pub (crate)
@@ -161,10 +161,9 @@ impl NickTracker {
         let cx      = hc.get_context().expect("Context grab shouldn't fail.");    
         
         thread_task(move || {
-            if me.num_tasks > 10 {
+            if num_queued_tasks() > MAX_QUEUED_TASKS {
                 return;
             }
-            me.num_tasks += 1;
             match me.get_ip_addr_info(&ip_addr) {
                 Ok(ip_info) => {
                     let [ip, city, 
@@ -184,7 +183,6 @@ impl NickTracker {
                                  &ip_addr, err), &cx);
                 },
             }
-            me.num_tasks -= 1;
         });
         Eat::All
     }
@@ -204,10 +202,9 @@ impl NickTracker {
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread_task(move || {
-            if me.num_tasks > 10 {
+            if num_queued_tasks() > MAX_QUEUED_TASKS {
                 return;
             }
-            me.num_tasks += 1;
             match || -> Result<(), TrackerError> {
 
                 cx.print("🤔\tDBUPDATE:")?;
@@ -248,7 +245,6 @@ impl NickTracker {
                 },
                 _ => (),
             }
-            me.num_tasks -= 1;
         });
         Eat::All
     }
@@ -271,10 +267,9 @@ impl NickTracker {
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread_task(move || {
-            if me.num_tasks > 10 {
+            if num_queued_tasks() > MAX_QUEUED_TASKS {
                 return;
             }
-            me.num_tasks += 1;
             match || -> Result<(), TrackerError> {
                 cx.print(&format!("🕵️\tDBWHO: {}", who))?;
                 let mut found = false;
@@ -315,7 +310,6 @@ impl NickTracker {
                 },
                 _ => {},
             }
-            me.num_tasks -= 1;
         });
         Eat::All
     }
@@ -344,10 +338,9 @@ impl NickTracker {
         let cx      = hc.get_context().unwrap();
         
         thread_task(move || {
-            if me.num_tasks > 10 {
+            if num_queued_tasks() > MAX_QUEUED_TASKS {
                 return;
             }
-            me.num_tasks += 1;
             me.write_ts_ctx(&format!("🕵️\tUSER JOINED: {}", nick), &cx);
             
             me.nick_data.update(&nick,    &channel, &host, 
@@ -355,7 +348,6 @@ impl NickTracker {
                                 
             me.nick_data.print_related(&nick,    &host,    &account, 
                                        &address, &network, &me, &cx);
-            me.num_tasks -= 1;
         });
         Eat::None
     }
@@ -385,10 +377,9 @@ impl NickTracker {
             let cx = hc.get_context().unwrap();
             
             thread_task(move || {
-                if me.num_tasks > 10 {
+                if num_queued_tasks() > MAX_QUEUED_TASKS {
                     return;
                 }
-                me.num_tasks += 1;
                 match || -> Result<(), TrackerError> {
                 
                     for user in cx.list_get("users").tor()? {
@@ -416,7 +407,6 @@ impl NickTracker {
                     },
                     _ => {},
                 }
-                me.num_tasks -= 1;
             });
             Eat::All
         }

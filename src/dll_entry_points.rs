@@ -69,7 +69,17 @@ where F: FnOnce() + Send + 'static
 {
     unsafe {
         if let Some(tp) = &THREAD_POOL {
-            tp.execute(job);
+            tp.execute(job)
+        }
+    }
+}
+
+pub (crate) fn num_queued_tasks() -> usize {
+    unsafe {
+        if let Some(tp) = &THREAD_POOL {
+            tp.queued_count()
+        } else {
+            999
         }
     }
 }
