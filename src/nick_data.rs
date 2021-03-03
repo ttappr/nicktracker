@@ -10,11 +10,7 @@ use rusqlite::Rows;
 use std::sync::Condvar;
 use std::sync::Mutex;
 
-use hexchat_api::Hexchat;
-use hexchat_api::Context;
-use hexchat_api::outp;
-use hexchat_api::outpth;
-use hexchat_api::main_thread;
+use hexchat_api::*;
 
 use crate::nick_tracker::*;
 use crate::tracker_error::*;
@@ -45,8 +41,8 @@ impl NickData {
                      account : &str,
                      address : &str,
                      network : &str,
-                     channel : &str,
-                     tracker : &NickTracker)
+                     tracker : &NickTracker,
+                     context : &ThreadSafeContext)
     {
         const IPV4_LEN: usize = 15;
         const IPV6_LEN: usize = 39;
@@ -54,7 +50,6 @@ impl NickData {
         if let Ok(db_entries) = self.get_db_entries(nick, host, account, 
                                                     address, network)
         {
-            let mut lines = vec![];
             for [nick, channel, host, account, address] in &db_entries {
                 let mut msg;
                 if !address.is_empty() {
@@ -83,33 +78,7 @@ impl NickData {
                     // No IP available.
                     msg = format!("\x0313{:-16} {}", nick, host);
                 }
-                // Save the line for printing from the main thread.
-                lines.push(msg);
-            }
-            if !lines.is_empty() {
-                let network = network.to_string();
-                let channel = channel.to_string();
-
-                main_thread(move |hc| {
-                    match || -> Result<(), TrackerError> {
-                        let orig_ctx = hc.get_context().tor()?;
-                        let ctx      = hc.find_context(&network, 
-                                                       &channel).tor()?;
-                        ctx.set()?;
-                        for line in &lines {
-                            hc.print(&line);
-                        }
-                        orig_ctx.set()?;
-                        Ok(())
-                    }() {
-                        Err(err) => {
-                            hc.print(&format!("⚠️\tContext error encountered \
-                                               while printing nick records: {}", 
-                                               err));
-                        },
-                        _ => {},
-                    }
-                });
+                tracker.write_ts_ctx(&msg, context);
             }
         }
     }

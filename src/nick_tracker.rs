@@ -105,7 +105,24 @@ impl NickTracker {
         self.hc.print(msg);
     }
     
+    pub (crate)
+    fn write_ctx(&self, msg: &str, ctx: &Context) {
+        if ctx.print(msg).is_err() {
+            self.hc.print("⚠️\t\x0313Context grab failed for this message...");
+            self.hc.print(msg);
+        }
+    }
+    
+    pub (crate)
+    fn write_ts_ctx(&self, msg: &str, ctx: &ThreadSafeContext) {
+        if ctx.print(msg).is_err() {
+            self.hc.print("⚠️\t\x0313Context grab failed for this message...");
+            self.hc.print(msg);
+        }
+    }
+    
     fn get_chan_data(&self) -> (String, String) {
+        // These operations shouldn't fail if this is executed from main thread.
         let network = self.hc.get_info("network").unwrap();
         let channel = self.hc.get_info("channel").unwrap();
         (network, channel)
@@ -132,42 +149,31 @@ impl NickTracker {
                        ) -> Eat  
     {
         if word.len() != 2 {
-            self.hc.print("💡\tUsage: IPLOOKUP <IP>");
+            self.write("💡\tUsage: IPLOOKUP <IP>");
             return Eat::All;
         }
-        let (netw, chan) = self.get_chan_data();
-        let ip_addr      = word[1].clone();
-        let me           = self.clone();
+        let ip_addr = word[1].clone();
+        let me      = self.clone();
+        let hc      = me.hc.threadsafe();
+        let cx      = hc.get_context().expect("Context grab shouldn't fail.");    
         
         thread::spawn(move || {
             if let Ok(ip_info) = me.get_ip_addr_info(&ip_addr) {
-                main_thread(move |hc| {
-                    match || -> Result<(), TrackerError> {
-                        let ctx = hc.find_context(&netw, &chan).tor()?;
-                        let [ip, city, 
-                             region, country,
-                             isp, lat, lon, link] = &ip_info;
-                        ctx.print( 
-                            &format!("🌎\tIPLOOKUP ({}): {}, {} ({}) [{}]",
-                                     ip_addr, city, region, country, isp))?;
-                        ctx.print(
-                            &format!("    MAP: {}", link))?;
-                        Ok(())
-                    }() {
-                        Ok(_) => {},
-                        Err(err) => {
-                            hc.print(
-                                &format!("⚠️\tError while looking \
-                                          up IP: {}", err));
-                        },
-                    }
-                });
+            
+                let [ip, city, 
+                     region, country,
+                     isp, lat, lon, link] = &ip_info;
+                     
+                me.write_ts_ctx(
+                    &format!("🌎\tIPLOOKUP ({}): {}, {} ({}) [{}]",
+                             ip_addr, city, region, country, isp),
+                    &cx
+                );
+                me.write_ts_ctx(&format!("    MAP: {}", link), &cx);
+                
             } else {
-                let ip_addr = ip_addr.clone();
-                main_thread(move |hc| {
-                    hc.print(&format!("🌎\tIPLOOKUP ({}): failed.", 
-                             &ip_addr));
-                });
+                me.write_ts_ctx(
+                    &format!("🌎\tIPLOOKUP ({}): failed.", &ip_addr), &cx);
             }
         });
         Eat::All
@@ -180,14 +186,12 @@ impl NickTracker {
                        ) -> Eat  
     {
         if word.len() > 1 {
-            self.hc.print("💡\tUsage: DBUPDATE <takes no arguments>");
+            self.write("💡\tUsage: DBUPDATE <takes no arguments>");
             return Eat::All;
-        } 
-        
+        }
         let me = self.clone();
         let hc = self.hc.threadsafe();
-        let cx = hc.get_context()       
-                   .expect("Context acquisition shouldn't fail.");
+        let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread::spawn(move || {
             match || -> Result<(), TrackerError> {
@@ -203,13 +207,13 @@ impl NickTracker {
                          host, 
                          account, 
                          address, 
-                         network] = me.get_user_info_threaded(user, &cx)?;
+                         network] = me.get_user_info_ts(user, &cx)?;
                          
                     if me.nick_data.update(&nick,    &channel, &host,
                                            &account, &address, &network)
                     {
                         cx.print(
-                            &format!("+ New record added for user {}.", &nick)
+                            &format!("+ new record added for user {}.", &nick)
                         )?;
                         count = 1;
                     } else {
@@ -223,12 +227,74 @@ impl NickTracker {
                 Ok(())
             }() {
                 Err(err) => {
-                    cx.print(
-                        &format!("⚠️\tError during update: {}", err)
-                    )
-                    .expect("Context print shouldn't fail.");
+                    me.write_ts_ctx(
+                        &format!("⚠️\tError during update: {}", err),
+                        &cx
+                    );
                 },
                 _ => (),
+            }
+        });
+        Eat::All
+    }
+    
+    pub (crate)
+    fn on_cmd_dbwho(&mut self,
+                    word     : &[String],
+                    word_eol : &[String]
+                   ) -> Eat
+    {
+        if word.len() != 2 {
+            self.write("💡\tUsage: DBWHO <nick>");
+            return Eat::All;
+        }
+        let who    = word[1].clone();
+        let who_lc = word[1].to_lowercase();
+        
+        let me = self.clone();
+        let hc = self.hc.threadsafe();
+        let cx = hc.get_context().expect("Context grab shouldn't fail.");
+        
+        thread::spawn(move || {
+            match || -> Result<(), TrackerError> {
+                cx.print(&format!("🕵️\tDBWHO: {}", who))?;
+                let mut found = false;
+                let     users = cx.list_get("users")?;
+                
+                for user in &users {
+                    let account = user.get_field("account").tor()?;
+                    let nick    = user.get_field("nick").tor()?;
+                    
+                    if who_lc == nick.to_lowercase()    || 
+                       who_lc == account.to_lowercase() 
+                    {
+                        let info = me.get_user_info_ts(&user, &cx)?;
+                        let [nick, channel, 
+                             host, account, 
+                             address, network] = info;
+                             
+                        me.nick_data.print_related(&nick,    &host, 
+                                                   &account, &address, 
+                                                   &network, &me, &cx);
+                        found = true;
+                        break;
+                    }
+                }
+                if !found {
+                    let channel = cx.get_info("channel").tor()?;
+                    me.write_ts_ctx(
+                        &format!("⚠️\tNickname {} not currently in {}.", 
+                                 who, channel), &cx);
+                }
+                Ok(())
+            }() {
+                Err(err) => {
+                    me.write_ts_ctx(
+                        &format!("⚠️\tError during update: {}", err),
+                        &cx
+                    );
+                },
+                _ => {},
             }
         });
         Eat::All
@@ -249,30 +315,21 @@ impl NickTracker {
         };
         let (nick, channel, host) = (word[0].clone(), word[1].clone(),
                                      word[2].clone());
-        let (network, channel)    = self.get_chan_data();
-        let address               = self.get_ip_addr(&host);
-        let me                    = self.clone();
+
+        let address = self.get_ip_addr(&host);
+        let network = self.hc.get_info("network").unwrap();
+        let hc      = self.hc.threadsafe();
+        let me      = self.clone();
+        let cx      = hc.get_context().unwrap();
         
-        // This is really the only operation that makes sense to put on another
-        // thread. Retrieving a bunch of records from the database and 
-        // preparing them for printing, along with potential requests to
-        // a web service for geolocation data can take time. Putting it on
-        // a thread will keep the Hexchat GUI from halting.
         thread::spawn(move || {
-            let (nw, ch, nk) = (network.clone(), channel.clone(), nick.clone());
-        
-            main_thread(move |hc| { 
-                if let Some(ctx) = hc.find_context(&nw, &ch) {
-                    ctx.print(&format!("🕵️\tUSER JOINED: {}", nk)).unwrap();
-                } else {
-                    hc.print("⚠️\tFailed to get context.");
-                }
-            });
+            me.write_ts_ctx(&format!("🕵️\tUSER JOINED: {}", nick), &cx);
+            
             me.nick_data.update(&nick,    &channel, &host, 
                                 &account, &address, &network);
                                 
             me.nick_data.print_related(&nick,    &host,    &account, 
-                                       &address, &network, &channel, &me);
+                                       &address, &network, &me, &cx);
         });
         Eat::None
     }
@@ -297,8 +354,6 @@ impl NickTracker {
             let old_nick = &word[0];
             let new_nick = &word[1];
             
-            use FieldValue::*;
-            
             match || -> Result<(), TrackerError> {
                 let context = self.hc.get_context().tor()?;
             
@@ -320,10 +375,10 @@ impl NickTracker {
                 }
                 Ok(())
             }() {
-                Ok(_) => {},
                 Err(err) => {
-                    self.hc.print(&format!("⚠️\t{}", err));
+                    self.write(&format!("⚠️\t{}", err));
                 },
+                _ => {},
             }
             Eat::All
         }
@@ -345,10 +400,10 @@ impl NickTracker {
            ])
     }
     
-    fn get_user_info_threaded(&self,
-                              user      : &ThreadSafeListIterator,
-                              context   : &ThreadSafeContext
-                             ) -> Result<[String;6], TrackerError>
+    fn get_user_info_ts(&self,
+                        user      : &ThreadSafeListIterator,
+                        context   : &ThreadSafeContext
+                       ) -> Result<[String;6], TrackerError>
     {
         let host = user.get_field("host"   ) .tor()?;
         

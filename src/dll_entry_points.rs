@@ -114,6 +114,8 @@ fn dbwho(hc       : &Hexchat,
          udata    : &mut UserData
         ) -> Eat
 {
-    Eat::None
+    udata.apply_mut(|nt: &mut NickTracker| {
+                        nt.on_cmd_dbwho(word, word_eol)
+                    })
 }
 
