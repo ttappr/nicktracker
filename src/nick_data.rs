@@ -47,6 +47,7 @@ impl NickData {
                                        .unwrap())
                                        .join("addons")
                                        .into_boxed_path();
+                                       
         let db_path = addons_path.join("nicktracker-db.sqlite3")
                                  .into_boxed_path();
         
@@ -54,17 +55,18 @@ impl NickData {
                                             .expect("Unable to generate \
                                                      addons path string.")
                                             .to_string();
-        let db_path_string     = db_path.to_str()
-                                        .expect("Unable to generate the \
-                                                 database path string.")
-                                        .to_string();
+                                            
+        let db_path_string = db_path.to_str()
+                                    .expect("Unable to generate the \
+                                             database path string.")
+                                    .to_string();
         
         if !addons_path.exists() {
-            if std::fs::create_dir(addons_path).is_err() {
+            if let Err(err) = std::fs::create_dir(addons_path) {
                 // Unable to create addons folder for Hexchat.
                 hc.print(
                     &format!("⚠️\t\x0313Unable to create addons folder \
-                             for Hexchat ({}).", addons_path_string)
+                             for Hexchat ({}): {}.", addons_path_string, err)
                 );
                 return None;
             }
@@ -75,7 +77,7 @@ impl NickData {
                 // Unable to create database.
                 hc.print(
                     &format!("⚠️\t\x0313Unable to create the database \
-                              for Nick Tracker ({}).", db_path_string)
+                              for Nick Tracker ({}): {}", db_path_string, err)
                 );
                 return None
             }
