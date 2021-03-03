@@ -16,7 +16,7 @@ current population, then turn on automatic tracking with `/DBTOGGLE` and let
 it do its thing.
 
 To make the output more readable, it's recommended to set Hexchat to a
-monospace font like `DejaVu Sans Mono 10`. Switching to a monospace fond will
+monospace font like `DejaVu Sans Mono 10`. Switching to a monospace font will
 visibly align the data if the Hexchat window is stretched wide enough so 
 there isn't much text wrapping on the output.
 
