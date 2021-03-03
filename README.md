@@ -15,6 +15,11 @@ favorite channel, use the `/DBUPDATE` command to seed the database with the
 current population, then turn on automatic tracking with `/DBTOGGLE` and let
 it do its thing.
 
+To make the output more readable, it's recommended to set Hexchat to a
+monospace font like `DejaVu Sans Mono 10`. Switching to a monospace fond will
+visibly align the data if the Hexchat window is stretched wide enough so 
+there isn't much text wrapping on the output.
+
 ## Hexchat Commands
 * `/DBUPDATE` 
     * Update the database with the users in the current channel.
