@@ -10,6 +10,7 @@ use std::error::Error;
 use std::fmt;
 use std::thread;
 use std::time::Duration;
+use std::u32;
 use ureq::Agent;
 use ureq::AgentBuilder;
 
@@ -31,7 +32,7 @@ const IPV4_EXPR      : &str  = r"\d+\.\d+\.\d+\.\d+|\d+-\d+-\d+-\d+";
 // Matches (non)standard delimiters and leading 0's in address parts.
 // r"(?:^|\.|-|:)0*(?!\.|-|:|$)" won't work because Rust regex doesn't have
 // lookahead. So I replaced the neg lookahead with a simple \B.
-const DLIM_EXPR      : &str  = r"(?:^|\.|-|:)0*\B";
+const DLIM_EXPR      : &str  = r"(?:^|\.|-|:)0*\b";
 
 // How long to wait for the IP geolaction server to respond.
 const SERVER_TIMEOUT : u64   = 5;
@@ -76,17 +77,6 @@ impl NickTracker {
                               Duration::from_secs(SERVER_TIMEOUT)
                           ).build(),
         }
-    }
-    pub (crate)
-    fn hello(&self, 
-             hc         : &Hexchat, 
-             word       : &[String], 
-             word_eol   : &[String], 
-             user_data  : &mut UserData
-            ) -> Eat
-    {
-        hc.print("Hello, world!");
-        Eat::All
     }
     fn activate(&mut self) {
         let chan_data = self.get_chan_data();
@@ -159,7 +149,7 @@ impl NickTracker {
             self.write("⚠️\t\x0313Too many outstanding tasks.");
             return Eat::All;
         }
-        let ip_addr = word[1].clone();
+        let ip_addr = self.get_ip_addr(&word[1]);
         let me      = self.clone();
         let hc      = me.hc.threadsafe();
         let cx      = hc.get_context().expect("Context grab shouldn't fail.");    
@@ -450,15 +440,24 @@ impl NickTracker {
     fn get_ip_addr(&self, host: &str) -> String {
     
         if let Some(m) = self.ipv6_expr.find(host) {
-        
+       
             let addr = m.as_str().to_lowercase();
-            self.dlim_expr.replace(&addr, ":")[1..].to_string()
+    
+            addr.split(|c: char| ".-:".contains(c))
+                .map(|s| u32::from_str_radix(s, 16).unwrap_or(0))
+                .map(|i| format!("{:x}", i))
+                .collect::<Vec<_>>()
+                .join(":")
             
         } else if let Some(m) = self.ipv4_expr.find(host) {
         
             let addr = m.as_str().to_lowercase();
-            self.dlim_expr.replace(&addr, ".")[1..].to_string()
-            
+            addr.split(|c: char| ".-:".contains(c))
+                .map(|s| u32::from_str_radix(s, 10).unwrap_or(0))
+                .map(|i| format!("{:?}", i))
+                .collect::<Vec<_>>()
+                .join(".")
+
         } else {
             String::new()
         }
