@@ -156,6 +156,7 @@ impl NickTracker {
             return Eat::All;
         }
         if num_queued_tasks() > MAX_QUEUED_TASKS {
+            self.hc.print("⚠️\t\x0313Too many outstanding tasks.");
             return Eat::All;
         }
         let ip_addr = word[1].clone();
@@ -198,6 +199,7 @@ impl NickTracker {
             return Eat::All;
         }
         if num_queued_tasks() > MAX_QUEUED_TASKS {
+            self.hc.print("⚠️\t\x0313Too many outstanding tasks.");
             return Eat::All;
         }
         let me = self.clone();
@@ -260,6 +262,7 @@ impl NickTracker {
             return Eat::All;
         }
         if num_queued_tasks() > MAX_QUEUED_TASKS {
+            self.hc.print("⚠️\t\x0313Too many outstanding tasks.");
             return Eat::All;
         }
         let who    = word[1].clone();
