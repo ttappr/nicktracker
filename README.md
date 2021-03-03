@@ -21,9 +21,12 @@ visibly align the data if the Hexchat window is stretched wide enough so
 there isn't much text wrapping on the output.
 
 *Note: Mar 3, 21 - on this day or prior, the entries added to the DB may have
-bad IP info. Either get rid of the old db file and start a new one, or somehow
-replace the IP's with empty strings in the `users` table;
-and get rid of the records in the `ip_addr_info` table.*
+bad IP info. This can be fixed with this query and a commit.*
+```sql
+DELETE
+FROM ip_addr_info
+WHERE city=""
+```
 
 ## Hexchat Commands
 * `/DBUPDATE` 
