@@ -16,7 +16,7 @@ mask out the users' IP information in their user information.
     * Turn on/off automatic tracking in the current channel.
 * `/DBWHO <nick>`
     * Print information on the given nickname.
-* `/IPLOCATE <ip>` 
+* `/IPLOOKUP <ip>` 
     * Try to get geolocation info for the given IP. It will generate a Google
       Maps link.
 
