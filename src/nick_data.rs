@@ -42,49 +42,6 @@ impl NickData {
         }
     }
     
-    fn check_database(hc: &Hexchat) -> Option<String> {
-        let addons_path = Path::new(&hc.get_info("xchatdir")
-                                       .unwrap())
-                                       .join("addons")
-                                       .into_boxed_path();
-                                       
-        let db_path = addons_path.join("nicktracker-db.sqlite3")
-                                 .into_boxed_path();
-        
-        let addons_path_string = addons_path.to_str()
-                                            .expect("Unable to generate \
-                                                     addons path string.")
-                                            .to_string();
-                                            
-        let db_path_string = db_path.to_str()
-                                    .expect("Unable to generate the \
-                                             database path string.")
-                                    .to_string();
-        
-        if !addons_path.exists() {
-            if let Err(err) = std::fs::create_dir(addons_path) {
-                // Unable to create addons folder for Hexchat.
-                hc.print(
-                    &format!("⚠️\t\x0313Unable to create addons folder \
-                             for Hexchat ({}): {}.", addons_path_string, err)
-                );
-                return None;
-            }
-        }
-        if !db_path.exists() {
-            if let Err(err) = Self::create_database(&db_path_string) 
-            {
-                // Unable to create database.
-                hc.print(
-                    &format!("⚠️\t\x0313Unable to create the database \
-                              for Nick Tracker ({}): {}", db_path_string, err)
-                );
-                return None
-            }
-        }
-        Some(db_path_string.to_string())
-    }
-    
     pub (crate)
     fn print_related(&self,
                      nick    : &str,
@@ -337,6 +294,50 @@ impl NickData {
                                                       r.get(4)?]
                                                      )).collect()?;
         Ok(vrows)
+    }
+    
+    fn check_database(hc: &Hexchat) -> Option<String> {
+        let addons_path = Path::new(&hc.get_info("xchatdir")
+                                       .expect("Unable to locate Hexchat's \
+                                                addons directory."))
+                                       .join("addons")
+                                       .into_boxed_path();
+                                       
+        let db_path = addons_path.join("nicktracker-db.sqlite3")
+                                 .into_boxed_path();
+        
+        let addons_path_string = addons_path.to_str()
+                                            .expect("Unable to generate \
+                                                     addons path string.")
+                                            .to_string();
+                                            
+        let db_path_string = db_path.to_str()
+                                    .expect("Unable to generate the \
+                                             database path string.")
+                                    .to_string();
+        
+        if !addons_path.exists() {
+            if let Err(err) = std::fs::create_dir(addons_path) {
+                // Unable to create addons folder for Hexchat.
+                hc.print(
+                    &format!("⚠️\t\x0313Unable to create addons folder \
+                             for Hexchat ({}): {}", addons_path_string, err)
+                );
+                return None;
+            }
+        }
+        if !db_path.exists() {
+            if let Err(err) = Self::create_database(&db_path_string) 
+            {
+                // Unable to create database.
+                hc.print(
+                    &format!("⚠️\t\x0313Unable to create the database \
+                              for Nick Tracker ({}): {}", db_path_string, err)
+                );
+                return None
+            }
+        }
+        Some(db_path_string.to_string())
     }
 }
 
