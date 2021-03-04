@@ -197,7 +197,7 @@ impl NickTracker {
             self.write("⚠️\t\x0313Too many outstanding tasks.");
             return Eat::All;
         }
-        let ip_addr = self.get_ip_addr(&word[1]);
+        let ip_addr = self.normalize_ip_addr(&word[1]);
         let me      = self.clone();
         let hc      = me.hc.threadsafe();
         let cx      = hc.get_context().expect("Context grab shouldn't fail.");    
@@ -385,7 +385,7 @@ impl NickTracker {
         let (nick, channel, host) = (word[0].clone(), word[1].clone(),
                                      word[2].clone());
 
-        let address = self.get_ip_addr(&host);
+        let address = self.normalize_ip_addr(&host);
         let network = self.hc.get_info("network").unwrap();
         let hc      = self.hc.threadsafe();
         let me      = self.clone();
@@ -485,7 +485,8 @@ impl NickTracker {
             context .get_info    ("channel") .tor()?,
             host    .clone(),
             user    .get_field   ("account") .tor()?,
-            self    .get_ip_addr ( &host   ),
+            self    .normalize_ip_addr 
+                                 ( &host   ),
             context .get_info    ("network") .tor()?
            ])
     }
@@ -503,15 +504,16 @@ impl NickTracker {
             context .get_info    ("channel") .tor()?,
             host    .clone(),
             user    .get_field   ("account") .tor()?,
-            self    .get_ip_addr ( &host   ),
+            self    .normalize_ip_addr 
+                                 ( &host   ),
             context .get_info    ("network") .tor()?
            ])
     }
     
-    /// Normalizes IPv4 and IPv6 addresses to make it easier to relate them
-    /// to other data in the database.
+    /// Normalizes IPv4 and IPv6 addresses for consistency in the database
+    /// entries and queries.
     ///
-    fn get_ip_addr(&self, host: &str) -> String {
+    fn normalize_ip_addr(&self, host: &str) -> String {
     
         if let Some(m) = self.ipv6_expr.find(host) {
        

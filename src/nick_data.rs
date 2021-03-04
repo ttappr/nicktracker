@@ -351,6 +351,7 @@ impl NickData {
                AND (network LIKE ? OR
                     network LIKE 'elitebnc')
                ORDER BY datetime_seen ASC
+               LIMIT 15
             ")?;
             
         conn.remove_function("NICKEXPR", 1)?;
