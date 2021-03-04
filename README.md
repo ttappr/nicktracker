@@ -2,7 +2,9 @@
 # Hexchat Nick Tracker
 
 **PLEASE USE THIS TOOL WITH MATURITY AND DISCRETION**
-*(don't be a creeper)***.**
+*(be responsible - don't be a creeper)***.**
+
+This tool is mainly intended for channel moderators.
 
 This addon builds a database of metadata for each visitor to a channel. With 
 this information, it can identify users despite them changing nicknames or
