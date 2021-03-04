@@ -22,6 +22,8 @@ use crate::tor::*;
 ///
 const DB_BUSY_TIMEOUT: u64 = 5; // Seconds.
 
+const MAX_ROWS_PRINT : i32 = 15;
+
 /// The `NickData` object interacts with the nickname/user info database.
 /// It handles the queries and other operations.
 ///
@@ -360,7 +362,8 @@ impl NickData {
         let vrows: Vec<[String;5]> = rows.map(|r| Ok([r.get(0)?, r.get(1)?,
                                                       r.get(2)?, r.get(3)?, 
                                                       r.get(4)?]
-                                                     )).take(15).collect()?;
+                                                     )).take(MAX_ROWS_PRINT)
+                                                       .collect()?;
         Ok(vrows)
     }
     
@@ -372,8 +375,8 @@ impl NickData {
         let addons_path = Path::new(&hc.get_info("xchatdir")
                                        .expect("Unable to locate Hexchat's \
                                                 addons directory."))
-                                       .join("addons")
-                                       .into_boxed_path();
+                               .join("addons")
+                               .into_boxed_path();
                                        
         let db_path = addons_path.join("nicktracker-db.sqlite3")
                                  .into_boxed_path();
