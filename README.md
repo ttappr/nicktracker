@@ -29,6 +29,10 @@ FROM ip_addr_info
 WHERE city=""
 ```
 
+This project is still under initial development, so there are still issues/bugs
+to work out. However, it's functional enough at this point to be useful. But
+expect a lot of fixes to be checked in with some frequency.
+
 ## Hexchat Commands
 * `/DBUPDATE` 
     * Update the database with the users in the current channel.
