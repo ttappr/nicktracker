@@ -8,8 +8,8 @@ This tool is mainly intended for channel moderators.
 
 This addon builds a database of metadata for each visitor to a channel. With 
 this information, it can identify users despite them changing nicknames or
-accounts (in many cases). This addon works best on IRC networks that don't
-mask out the users' IP information in their host information (e.g. *freenode*).
+accounts (in many cases). This addon works best on IRC networks that, by 
+default, include the users' IP's in their host info (e.g. *freenode*).
 
 It takes a short span of time to build enough of a database for it to start
 giving meaningful information. To start building this database for your
