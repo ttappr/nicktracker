@@ -351,7 +351,6 @@ impl NickData {
                AND (network LIKE ? OR
                     network LIKE 'elitebnc')
                ORDER BY datetime_seen ASC
-               LIMIT 15
             ")?;
             
         conn.remove_function("NICKEXPR", 1)?;
@@ -361,7 +360,7 @@ impl NickData {
         let vrows: Vec<[String;5]> = rows.map(|r| Ok([r.get(0)?, r.get(1)?,
                                                       r.get(2)?, r.get(3)?, 
                                                       r.get(4)?]
-                                                     )).collect()?;
+                                                     )).take(15).collect()?;
         Ok(vrows)
     }
     
