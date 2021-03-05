@@ -67,7 +67,8 @@ account.
     * Print information on the given nickname.
 * `/IPLOOKUP <ip>` 
     * Try to get geolocation info for the given IP. It will generate a Google
-      Maps link.
+      Maps link. The output is **much** more specific than what the 
+      `USER JOINED` message shows (as above).
 
 ## Building
 It's fairly easy to set up a Rust build environment on your system. You can find
