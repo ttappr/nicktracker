@@ -44,7 +44,7 @@ The format is: `<nick> <ip/host> <geolocation-of-ISP-host> [<ISP-name>] <<<accou
  LaTeeDah         111.122.133.144 Bikini Bottom, Pacific Ocean (United States) [Squidward Ltd]
 ```
 
-The geolocation data of the ISP is interesting because a moderator can get a
+The geolocation data of the ISP is interesting because one can get a
 general sense of the geographical distribution of the channel's population,
 and one could learn something about geography if they were interested enough
 in learning about their user's to use the `/IPLOOKUP` feature to see the regions
