@@ -47,9 +47,9 @@ The format is: `<nick> <ip/host> <geolocation-of-ISP-host> [<ISP-name>] <<<accou
 The geolocation data of the ISP is interesting because one can get a
 general sense of the geographical distribution of the channel's population,
 and one could learn something about geography if they were interested enough
-in learning about their user's to use the `/IPLOOKUP` feature to see the regions
-people come from on the map. Of course the geolocation won't show that if
-they're using a VPN, but in a lot of cases, they aren't.
+in learning about their fellow user's to use the `/IPLOOKUP` feature to see the
+regions people come from on the map. Of course the geolocation won't show that 
+if they're using a VPN, but in a lot of cases, they aren't.
 
 On servers that mask out IP's by default - or the user has a cloak, the IP 
 field will just contain their `host` string with no ISP geolocation info, 
