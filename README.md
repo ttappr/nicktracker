@@ -93,4 +93,33 @@ plugins. It has some nice features like
   tabs/windows in the UI.
 * Panic's are caught and displayed in the active window.
 
+## The Creep Factor
+
+One would hope that it wouldn't be necessary to explain this, but with the 
+project publicly accessible, it's worth mentioning. The tool can in many
+cases give geolocation data that is close enough to users to creep them out
+if some discretion isn't used.
+
+Many new users, and even old-timers, on IRC networks value their privacy and
+expect some respect to be given that fact. If a user joins a channel and 
+a regular, with the simple intention of being friendly, asks them right off the
+bat how the weather is in Orlando Florida, that can sometimes evoke an extreme
+reaction in people. In the worst case it can make them feel unsafe on
+IRC and never come back.
+
+I've found the best way to use the tool with discretion is simply **not to 
+mention anything about it** to users who you aren't certain would be comfortable
+with the fact that their IP's are visible to the world, and people really do take
+note of it, and many bots and other entities are constantly logging such 
+information.
+
+Yes, users who would feel compromised if you mentioned their location without
+any prior conversation on the topic are being somewhat naive. But they can learn
+about IRC masking and privacy at their own pace without someone frightening them 
+into doing it.
+
+
+
+
+
 
