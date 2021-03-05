@@ -91,7 +91,7 @@ impl NickTracker {
     fn activate(&mut self) {
         let chan_data = self.get_chan_data();
         self.chan_set.insert(chan_data);
-        self.write("🔎\tNick Tracker enabled for this channel.");
+        self.write("🔎\t\x0311Nick Tracker enabled for this channel.");
     }
     
     /// "Deactivates" the window the user is currently interacting with.
@@ -99,7 +99,7 @@ impl NickTracker {
     fn deactivate(&mut self) {
         let chan_data = self.get_chan_data();
         self.chan_set.remove(&chan_data);
-        self.write("🔎\tNick Tracker disabled for this channel.");
+        self.write("🔎\t\x0311Nick Tracker disabled for this channel.");
     }
     
     /// Determines if the current window has been activated.
@@ -190,7 +190,7 @@ impl NickTracker {
                        ) -> Eat  
     {
         if word.len() != 2 {
-            self.write("💡\tUsage: IPLOOKUP <IP>");
+            self.write("💡\t\x0311Usage: IPLOOKUP <IP>");
             return Eat::All;
         }
         if num_queued_tasks() > MAX_QUEUED_TASKS {
@@ -210,15 +210,15 @@ impl NickTracker {
                          isp, lat, lon, link] = &ip_info;
                          
                     me.write_ts_ctx(
-                        &format!("🌎\tIPLOOKUP ({}): {}, {} ({}) [{}]",
+                        &format!("🌎\t\x0311IPLOOKUP ({}): {}, {} ({}) [{}]",
                                  ip_addr, city, region, country, isp),
                         &cx
                     );
-                    me.write_ts_ctx(&format!("    MAP: {}", link), &cx);
+                    me.write_ts_ctx(&format!("\x0311    MAP: {}", link), &cx);
                 },
                 Err(err) => {
                     me.write_ts_ctx(
-                        &format!("🌎\tIPLOOKUP ({}): failed. {}", 
+                        &format!("🌎\t\x0313IPLOOKUP ({}): failed. {}", 
                                  &ip_addr, err), &cx);
                 },
             }
@@ -236,7 +236,7 @@ impl NickTracker {
                        ) -> Eat  
     {
         if word.len() > 1 {
-            self.write("💡\tUsage: DBUPDATE <takes no arguments>");
+            self.write("💡\t\x0311Usage: DBUPDATE <takes no arguments>");
             return Eat::All;
         }
         if num_queued_tasks() > MAX_QUEUED_TASKS {
@@ -250,7 +250,7 @@ impl NickTracker {
         thread_task(move || {
             match || -> Result<(), TrackerError> {
 
-                cx.print("🤔\tDBUPDATE:")?;
+                cx.print("🤔\t\x0311DBUPDATE:")?;
             
                 let mut count = 0;
                 let user_list = cx.list_get("users").tor()?;
@@ -267,22 +267,23 @@ impl NickTracker {
                                            &account, &address, &network)
                     {
                         cx.print(
-                            &format!("+ new record added for user {}.", &nick)
+                            &format!("\x0311+ new record added for user \
+                                      \x0309\x02{}.", &nick)
                         )?;
                         count = 1;
                     } else {
                         if count % 200 == 0 {
-                            cx.aprint("- processing...");
+                            cx.aprint("\x0311- processing...");
                         }
                         count += 1;
                     }
                 }
-                cx.print("DBUPDATE Done.\n")?;
+                cx.print("\x0311DBUPDATE Done.\n")?;
                 Ok(())
             }() {
                 Err(err) => {
                     me.write_ts_ctx(
-                        &format!("⚠️\tError during update: {}", err),
+                        &format!("⚠️\t\x0313Error during update: {}", err),
                         &cx
                     );
                 },
@@ -303,7 +304,7 @@ impl NickTracker {
                    ) -> Eat
     {
         if word.len() != 2 {
-            self.write("💡\tUsage: DBWHO <nick>");
+            self.write("💡\t\x0311Usage: DBWHO <nick>");
             return Eat::All;
         }
         if num_queued_tasks() > MAX_QUEUED_TASKS {
@@ -319,7 +320,7 @@ impl NickTracker {
         
         thread_task(move || {
             match || -> Result<(), TrackerError> {
-                cx.print(&format!("🕵️\tDBWHO: {}", who))?;
+                cx.print(&format!("🕵️\t\x0311DBWHO: \x0309\x02{}", who))?;
                 let mut found = false;
                 let     users = cx.list_get("users").tor()?;
                 
@@ -345,14 +346,14 @@ impl NickTracker {
                 if !found {
                     let channel = cx.get_info("channel").tor()?;
                     me.write_ts_ctx(
-                        &format!("⚠️\tNickname {} not currently in {}.", 
+                        &format!("⚠️\t\x0313Nickname {} not currently in {}.", 
                                  who, channel), &cx);
                 }
                 Ok(())
             }() {
                 Err(err) => {
                     me.write_ts_ctx(
-                        &format!("⚠️\tError during update: {}", err),
+                        &format!("⚠️\t\x0313Error during update: {}", err),
                         &cx
                     );
                 },
@@ -392,7 +393,8 @@ impl NickTracker {
         let cx      = hc.get_context().unwrap();
         
         thread_task(move || {
-            me.write_ts_ctx(&format!("🕵️\t\x0313USER JOINED: {}", nick), &cx);
+            me.write_ts_ctx(&format!("🕵️\t\x0311USER JOINED: \x0309\x02{}", 
+                                     nick), &cx);
             
             me.nick_data.update(&nick,    &channel, &host, 
                                 &account, &address, &network);
@@ -461,7 +463,7 @@ impl NickTracker {
                     Ok(())
                 }() {
                     Err(err) => {
-                        me.write(&format!("⚠️\t{}", err));
+                        me.write(&format!("⚠️\t\x0313{}", err));
                     },
                     _ => {},
                 }

@@ -90,11 +90,13 @@ impl NickData {
                              isp, lat,  lon,    link    ] = addr_info;
                         msg = {
                             if ip.len() > IPV4_LEN {
-                                format!("\x0313{:-16} {:-39} {}, {} ({}) [{}]",
+                                format!("\x0309\x02{:-16}\x0F \
+                                         \x0311{:-39} {}, {} ({}) [{}]",
                                         nick, address, city, region, country, 
                                         isp)
                             } else {
-                                format!("\x0313{:-16} {:-15} {}, {} ({}) [{}]",
+                                format!("\x0309\x02{:-16}\x0F \
+                                         \x0311{:-15} {}, {} ({}) [{}]",
                                         nick, address, city, region, country, 
                                         isp)
                             }
@@ -104,11 +106,11 @@ impl NickData {
                         }
                     } else {
                         // No IP geolocation available.
-                        msg = format!("\x0313{:-16} {}", nick, address);
+                        msg = format!("\x0309\x02{:-16}\x0F \x0311{}", nick, address);
                     }
                 } else {
                     // No IP available.
-                    msg = format!("\x0313{:-16} {}", nick, host);
+                    msg = format!("\x0309\x02{:-16}\x0F \x0311{}", nick, host);
                 }
                 tracker.write_ts_ctx(&msg, context);
             }
@@ -307,10 +309,8 @@ impl NickData {
                 let mut nick_exp = self.trunc_expr.replace(nick, "")
                                                   .to_string();
                 if nick_exp.len() < 4 {
-                    nick_exp.clear();
-                    nick_exp.push('^');
-                    nick_exp.push_str(nick);
-                    nick_exp.push_str(".{0,3}$");
+                    nick_exp.insert_str(0, "^");
+                    nick_exp.push_str(r"[0-9_\-|]{0,6}$");
                 } else {
                     nick_exp.insert_str(0, "^");
                     nick_exp.push_str(r"[0-9_\-|]{0,3}$");
