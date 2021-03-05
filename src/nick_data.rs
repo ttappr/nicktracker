@@ -82,7 +82,7 @@ impl NickData {
         if let Ok(db_entries) = self.get_db_entries(nick, host, account, 
                                                     address, network)
         {
-            for [nick, channel, host, account, address] in &db_entries {
+            for [nick, host, account, address] in &db_entries {
                 let mut msg;
                 if !address.is_empty() {
                     if let Ok(addr_info) = tracker.get_ip_addr_info(address) {
@@ -106,7 +106,8 @@ impl NickData {
                         }
                     } else {
                         // No IP geolocation available.
-                        msg = format!("\x0309\x02{:-16}\x0F \x0311{}", nick, address);
+                        msg = format!("\x0309\x02{:-16}\x0F \x0311{}", 
+                                      nick, address);
                     }
                 } else {
                     // No IP available.
@@ -297,7 +298,7 @@ impl NickData {
                       account   : &str,
                       address   : &str,
                       network   : &str
-                     ) -> Result<Vec<[String;5]>, TrackerError>
+                     ) -> Result<Vec<[String;4]>, TrackerError>
     {
         let conn = Connection::open(&self.path)?;
         conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
@@ -346,7 +347,7 @@ impl NickData {
         // Query again using additional field values gathered from first 
         // query.
         let mut statement = conn.prepare(
-            r" SELECT DISTINCT nick, channel, host, account, address
+            r" SELECT DISTINCT nick, host, account, address
                FROM    users
                WHERE  (nick    IN  (SELECT DISTINCT nick FROM temp_table1)
                    OR  host    IN  (SELECT DISTINCT host FROM temp_table1)
@@ -366,9 +367,8 @@ impl NickData {
             
         let rows = statement.query(&[network])?;
         
-        let vrows: Vec<[String;5]> = rows.map(|r| Ok([r.get(0)?, r.get(1)?,
-                                                      r.get(2)?, r.get(3)?, 
-                                                      r.get(4)?]
+        let vrows: Vec<[String;4]> = rows.map(|r| Ok([r.get(0)?, r.get(1)?,
+                                                      r.get(2)?, r.get(3)?]
                                                      )).take(MAX_ROWS_PRINT)
                                                        .collect()?;
         Ok(vrows)
