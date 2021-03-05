@@ -22,7 +22,10 @@ use crate::tor::*;
 ///
 const DB_BUSY_TIMEOUT: u64 = 5; // Seconds.
 
-const MAX_ROWS_PRINT : i32 = 15;
+/// Maximum number of rows of data to print when listing possible matches for
+/// a given user.
+///
+const MAX_ROWS_PRINT : usize = 15;
 
 /// The `NickData` object interacts with the nickname/user info database.
 /// It handles the queries and other operations.
@@ -304,8 +307,10 @@ impl NickData {
                 let mut nick_exp = self.trunc_expr.replace(nick, "")
                                                   .to_string();
                 if nick_exp.len() < 4 {
-                    nick_exp = nick[0..].to_string();
+                    nick_exp.insert_str(0, "^");
+                    nick_exp.push_str(".{0,4}$");
                 } else {
+                    nick_exp.insert_str(0, "^");
                     nick_exp.push_str(r"[0-9_\-|]{0,3}$");
                 }
                 Regex::new(&nick_exp)?

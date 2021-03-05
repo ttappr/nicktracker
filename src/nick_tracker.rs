@@ -272,7 +272,7 @@ impl NickTracker {
                         count = 1;
                     } else {
                         if count % 200 == 0 {
-                            cx.print("- processing...")?;
+                            cx.aprint("- processing...");
                         }
                         count += 1;
                     }
@@ -510,8 +510,14 @@ impl NickTracker {
            ])
     }
     
-    /// Normalizes IPv4 and IPv6 addresses for consistency in the database
-    /// entries and queries.
+    /// Attempts to extract a normalized IP (v4 or v6) from the 'host' string
+    /// given.
+    /// # Arguments
+    /// * `host` - A user's host string as taken from the Hexchat "user" list
+    ///            (i.e., `user_list_item.get_field("host")`).
+    /// # Returns
+    /// * A normalized IPv4 or IPv6 address suitable for database entry, or
+    ///   use in queries.
     ///
     fn normalize_ip_addr(&self, host: &str) -> String {
     
