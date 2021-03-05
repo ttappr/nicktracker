@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "nicktracker"
 crate-type = ["cdylib"]
-
+ 
 [dependencies]
 fallible-iterator = "0.2"
 hexchat_api = { path = "../hexchat_api" }
