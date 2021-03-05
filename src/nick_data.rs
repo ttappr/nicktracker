@@ -114,9 +114,6 @@ impl NickData {
                                         isp)
                             }
                         };
-                        if !account.is_empty() {
-                            msg.push_str(&format!(" <<{}>>", account));
-                        }
                     } else {
                         // No IP geolocation available.
                         msg = format!("\x0309\x02{:-16}\x0F \x0311{}", 
@@ -125,6 +122,9 @@ impl NickData {
                 } else {
                     // No IP available.
                     msg = format!("\x0309\x02{:-16}\x0F \x0311{}", nick, host);
+                }
+                if !account.is_empty() {
+                    msg.push_str(&format!(" <<{}>>", account));
                 }
                 tracker.write_ts_ctx(&msg, context);
             }
