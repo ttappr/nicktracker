@@ -124,7 +124,8 @@ impl NickData {
                     msg = format!("\x0309\x02{:-16}\x0F \x0311{}", nick, host);
                 }
                 if !account.is_empty() {
-                    msg.push_str(&format!(" <<{}>>", account));
+                    msg.push_str(
+                        &format!(" <<\x0313\x02{}\x0f\x0311>>", account));
                 }
                 tracker.write_ts_ctx(&msg, context);
             }
