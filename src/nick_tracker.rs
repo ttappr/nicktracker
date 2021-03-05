@@ -273,7 +273,7 @@ impl NickTracker {
                         count = 1;
                     } else {
                         if count % 200 == 0 {
-                            cx.aprint("\x0311- processing...");
+                            cx.print("\x0311- processing...")?;
                         }
                         count += 1;
                     }

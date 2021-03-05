@@ -69,6 +69,9 @@ account.
     * Try to get geolocation info for the given IP. It will generate a Google
       Maps link. The output is **much** more specific than what the 
       `USER JOINED` message shows (as above).
+      
+## Binaries
+The first release with binaries can be found [here](https://github.com/ttappr/nicktracker/releases/tag/nicktracker-v0.1.0).
 
 ## Building
 It's fairly easy to set up a Rust build environment on your system. You can find
