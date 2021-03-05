@@ -392,7 +392,7 @@ impl NickTracker {
         let cx      = hc.get_context().unwrap();
         
         thread_task(move || {
-            me.write_ts_ctx(&format!("🕵️\tUSER JOINED: {}", nick), &cx);
+            me.write_ts_ctx(&format!("🕵️\t\x0313USER JOINED: {}", nick), &cx);
             
             me.nick_data.update(&nick,    &channel, &host, 
                                 &account, &address, &network);
