@@ -18,6 +18,19 @@ use crate::nick_tracker::*;
 use crate::tracker_error::*;
 use crate::tor::*;
 
+// Some ideas on how to track users on servers that don't embed IP's in user 
+// host info:
+//   * I see many cases where a user logs in to snoonet and freenode 
+//     simultaneously. Have the addon collect that data across all servers and
+//     channels and associate these "coincidental" log ins. They can be detected
+//     by proximity in time of the login and either the same or similar account
+//     - or nick - names.
+//   * Use a Levensthein function in DB queries to determine the distance 
+//     between database records.
+//   * Collect which channels nicks log into simulatneously - they're likely
+//     to consistently log in like that over time.
+
+
 /// How long a thread will wait for the DB to become available if it's locked.
 ///
 const DB_BUSY_TIMEOUT: u64 = 5; // Seconds.
@@ -310,7 +323,13 @@ impl NickData {
                 let mut nick_exp = self.trunc_expr.replace(nick, "")
                                                   .to_string();
                 if nick_exp.len() < 4 {
-                    nick_exp.insert_str(0, "^");
+                    nick_exp.clear();
+                    nick_exp.push('^');
+                    if nick.len() > 4 {
+                        nick_exp.push_str(&nick[0..4]);
+                    } else {
+                        nick_exp.push_str(nick);
+                    }
                     nick_exp.push_str(r"[0-9_\-|]{0,6}$");
                 } else {
                     nick_exp.insert_str(0, "^");
