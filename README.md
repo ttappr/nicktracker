@@ -73,6 +73,18 @@ account.
 ## Binaries
 The first release with binaries can be found [here](https://github.com/ttappr/nicktracker/releases/tag/nicktracker-v0.1.0).
 
+The binaries provided are:
+* `libnicktracker.so`    (Linux)
+* `nicktracker.dll`      (Windows)
+
+To add it to Hexchat, you can put the relevant binary in the "addons" 
+folder of your system's Hexchat config directory.
+* `~/.config/hexchat/addons` for Linux
+* `%APPDATA%\HexChat\addons` on Windows
+
+Or they can be loaded manually from the menubar on the Hexchat UI:
+* `Window > Plugins and Scripts > Load`
+
 ## Building
 It's fairly easy to set up a Rust build environment on your system. You can find
 instructions [here](https://www.rust-lang.org/learn/get-started). The process
