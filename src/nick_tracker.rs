@@ -1,5 +1,7 @@
 
-#![allow(unused_variables, dead_code, unused_imports)]
+//! This module contains the primary object, `NickTracker` that provides the 
+//! features of the addon and implements the commands and handlers.
+//! 
 
 use regex::Regex;
 use serde_json::Value;

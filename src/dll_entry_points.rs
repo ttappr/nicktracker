@@ -1,4 +1,8 @@
-#![allow(unused_variables, dead_code, unused_imports)]
+
+//! This module contains the exported functions that Hexchat calls when the
+//! addon is loaded and unloaded. It registers the commands the addon provides
+//! and the Hexchat text event handlers.
+//! 
 
 use regex::Regex;
 use std::collections::HashSet;

@@ -1,4 +1,3 @@
-#![allow(unused_variables, dead_code, unused_imports)]
 
 mod dll_entry_points;
 mod nick_data;

@@ -1,4 +1,9 @@
 
+//! This module provides the user data related functionality and abstracts the
+//! database operations for `NickTracker`. It also handles the printing of the
+//! lists of matching nicknames.
+//! 
+
 use fallible_iterator::FallibleIterator;
 use std::path::Path;
 use regex::Regex;
