@@ -174,12 +174,11 @@ impl NickTracker {
                     if let Ok(FV::StringVal(channel)) 
                                     = item.get_field("channel") {
                                     
-                        if channel == network {
+                        if !channel.starts_with('#') {
                             continue;
                         }
                             
-                        let chan_data = (network.to_string(), 
-                                         channel.to_string());
+                        let chan_data = (network.clone(), channel.clone());
                             
                         if !self.chan_set.contains(&chan_data) {
                             self.chan_set.insert(chan_data);
