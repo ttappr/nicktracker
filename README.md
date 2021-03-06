@@ -69,7 +69,7 @@ account.
       `USER JOINED` message shows (as above).
       
 ## Binaries
-The first release with binaries can be found [here](https://github.com/ttappr/nicktracker/releases/tag/nicktracker-v0.1.0).
+The releases with binaries can be found [here](https://github.com/ttappr/nicktracker/releases).
 
 The binaries provided are:
 * `libnicktracker.so`    (Linux)
