@@ -68,8 +68,8 @@ fn plugin_deinit(hc: &Hexchat) -> i32 {
     hc.print("Nicktracker unloaded");
     unsafe { 
         if let Some(tp) = &THREAD_POOL {
-            THREAD_POOL = None;
             tp.join();
+            THREAD_POOL = None;
         }
     }
     1
