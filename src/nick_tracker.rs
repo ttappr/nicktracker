@@ -160,6 +160,7 @@ impl NickTracker {
         use FieldValue as FV;
         
         if word.len() == 1 {
+            // Simple case - just toggle the current channel.
             if self.is_active() {
                 self.deactivate();
             } else {
@@ -170,6 +171,11 @@ impl NickTracker {
                         && ["on", "off"].contains(&word[2].to_lowercase()
                                                           .as_str())))
         {
+            // This is some version of ALL [ON|OFF], where ON/OFF are optional.
+            
+            // `one_way == true` means flip *all* ON or OFF - don't just toggle.
+            // If `one_way == false`, then each open channel is flipped the 
+            // opposite of its current state individually.
             let one_way = word.len() == 3;
             let all_on  = one_way && word[2].to_lowercase().as_str() == "on";
             
@@ -186,7 +192,10 @@ impl NickTracker {
                         }
                             
                         let chan_data = (network.clone(), channel.clone());
-                            
+                         
+                        // Channels already in the desired state are skipped
+                        // if this is a `one_way == true` operation.   
+                        
                         if !(self.chan_set.contains(&chan_data)
                                 || one_way && !all_on) 
                         {
@@ -206,6 +215,9 @@ impl NickTracker {
                         }
                     }}
                 }
+                // TODO - The logic in this function is kind of "windey". 
+                //        It might be possible to simplify it and clean it up
+                //        a bit.
             }
         } else {
             self.write("💡\t\x0311Usage: DBTOGGLE [ALL [ON|OFF]]");

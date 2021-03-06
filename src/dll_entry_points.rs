@@ -22,7 +22,7 @@ dll_entry_points!(plugin_info, plugin_init, plugin_deinit);
 fn plugin_info() -> PluginInfo {
     PluginInfo::new(
         "Nicktracker",
-        "0.1.0",
+        env!("CARGO_PKG_VERSION"),
         "Keeps track of user nicknames.")
 }
 
