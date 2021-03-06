@@ -35,9 +35,9 @@ on the nickname, the output could look something like below.
 
 The format is: `<nick> <ip/host> <geolocation-of-ISP-host> [<ISP-name>] <<<account-name>>>`
 
-```irc
+```
  USER JOINED: ArchieBunker
- \x0311ArchieBunker     123.123.123.123 New York, New York (United States) [Edith Communications] <<ArchieBunker>>
+ ArchieBunker     123.123.123.123 New York, New York (United States) [Edith Communications] <<ArchieBunker>>
  HoneyBadger444   111.122.133.144 Bikini Bottom, Pacific Ocean (United States) [Squidward Ltd] <<ArchieBunker>>
  LaTeeDah         111.122.133.144 Bikini Bottom, Pacific Ocean (United States) [Squidward Ltd]
 ```
