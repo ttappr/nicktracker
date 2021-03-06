@@ -104,8 +104,12 @@ pub (crate) fn num_queued_tasks() -> usize {
     }
 }
 
-const DBTOGGLE_HELP : &str = "Toggles nick tracking on/off for the current \
-                              channel.";
+const DBTOGGLE_HELP : &str = "/DBTOGGLE [ALL [ON|OFF]] \
+                              Toggles nick tracking on/off for the current \
+                              channel. If ALL is given alone, it toggles the \
+                              state of each channel. If ON is given it \
+                              activates all inactive channels - if OFF is \
+                              given it deactivates all active channels.";
 const IPLOOKUP_HELP : &str = "/IPLOOKUP <ip> Prints the geolocation for the \
                               IP.";
 const DBWHO_HELP    : &str = "/DBWHO <user> Lists the nicknames for the given \

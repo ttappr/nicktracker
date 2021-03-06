@@ -165,7 +165,14 @@ impl NickTracker {
             } else {
                 self.activate();
             }
-        } else if word.len() == 2 && word[1].to_lowercase() == "all" {
+        } else if (word.len() > 1 && word[1].to_lowercase() == "all")
+                   && (word.len() == 2 || (word.len() == 3
+                        && ["on", "off"].contains(&word[2].to_lowercase()
+                                                          .as_str())))
+        {
+            let one_way = word.len() == 3;
+            let all_on  = one_way && word[2].to_lowercase().as_str() == "on";
+            
             if let Some(list) = ListIterator::new("channels") {
                 for item in list {
                     if let Ok(FV::StringVal(network)) 
@@ -180,13 +187,17 @@ impl NickTracker {
                             
                         let chan_data = (network.clone(), channel.clone());
                             
-                        if !self.chan_set.contains(&chan_data) {
+                        if !(self.chan_set.contains(&chan_data)
+                                || one_way && !all_on) 
+                        {
                             self.chan_set.insert(chan_data);
                             self.write(
                                 &format!("🔎\t\x0311\
                                          Nick Tracker enabled for ({}/{}).",
                                          network, channel));        
-                        } else {
+                                         
+                        } else if self.chan_set.contains(&chan_data) 
+                                && !(one_way && all_on) {
                             self.chan_set.remove(&chan_data);
                             self.write(
                                 &format!("🔎\t\x0311\
@@ -197,7 +208,7 @@ impl NickTracker {
                 }
             }
         } else {
-            self.write("💡\t\x0311Usage: DBTOGGLE [ALL]");
+            self.write("💡\t\x0311Usage: DBTOGGLE [ALL [ON|OFF]]");
         }
         Eat::All
     }
