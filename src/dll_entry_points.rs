@@ -92,22 +92,34 @@ const DBWHO_HELP    : &str = "/DBWHO <user> Lists the nicknames for the given \
                               user.";
 const DBUPDATE_HELP : &str = "/DBUPDATE Updates the nick database with user \
                               data for all users in the channel.";
-                              
+        
+/// Callback wrapper. Forwards the 'Join' text event to `NickTracker` for 
+/// handling. 
+///
 fn user_join(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 {
     udata.apply_mut(|nt: &mut NickTracker| { nt.on_user_join(word) })
 }
 
+/// Callback wrapper. Forwards 'Quit' text events on to `NickTracker` for
+/// handling.
+///
 fn user_quit(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 {
     udata.apply(|nt: &NickTracker| { nt.on_user_quit(word) })
 }
 
+/// Callback wrapper. Forwards 'Change Nick' text events on to `NickTracker` for
+/// handling.
+///
 fn change_nick(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 {
     udata.apply(|nt: &NickTracker| nt.on_user_change_nick(word))
 }
-                              
+
+/// Callback wrapper for the `/DBTOGGLE` command which it forwards to 
+/// `NickTracker`. 
+/// 
 fn dbtoggle(hc       : &Hexchat,
             word     : &[String],
             word_eol : &[String],

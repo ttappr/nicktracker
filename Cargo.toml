@@ -10,8 +10,8 @@ crate-type = ["cdylib"]
  
 [dependencies]
 fallible-iterator = "0.2"
-#hexchat_api = { path = "../hexchat_api" }
-hexchat_api = { git = "https://github.com/ttappr/hexchat_api.git", branch = "main" }
+hexchat_api = { path = "../hexchat_api" }
+#hexchat_api = { git = "https://github.com/ttappr/hexchat_api.git", branch = "main" }
 regex = "1"
 rusqlite = { version = "0.24", features = ["functions", "bundled"] }
 serde_json = "1.0"
