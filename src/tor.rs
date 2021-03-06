@@ -41,7 +41,7 @@ impl Tor for serde_json::Value {
     ///
     fn tor(&self) -> Result<Self::Target, TrackerError> 
     {
-        use TrackerError::JsonFmtError;
+        //use TrackerError::JsonFmtError;
 
         if let Some(s) = self.as_str() {
             Ok(s.to_string())

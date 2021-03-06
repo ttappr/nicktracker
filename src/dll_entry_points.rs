@@ -4,16 +4,9 @@
 //! and the Hexchat text event handlers.
 //! 
 
-use regex::Regex;
-use std::collections::HashSet;
-use std::convert::From;
-use std::error::Error;
-use std::fmt;
-use std::thread;
 use threadpool::ThreadPool;
 
 use hexchat_api::*;
-use UserData::*;
 use Priority::*;
 
 use crate::nick_tracker::*;
@@ -57,7 +50,7 @@ fn plugin_init(hc: &'static Hexchat) -> i32 {
     hc.hook_print("Join",               Norm, user_join,        udata.clone());
     hc.hook_print("Quit",               Norm, user_quit,        udata.clone());
     hc.hook_print("Change Nick",        Norm, change_nick,      udata.clone());
-    hc.hook_print("Your Nick Changing", Norm, change_nick,      udata.clone());
+    hc.hook_print("Your Nick Changing", Norm, change_nick,      udata);
     
     1
 }
@@ -123,7 +116,7 @@ const DBUPDATE_HELP : &str = "/DBUPDATE Updates the nick database with user \
 /// Callback wrapper. Forwards the 'Join' text event to `NickTracker` for 
 /// handling. 
 ///
-fn user_join(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
+fn user_join(_hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 {
     udata.apply_mut(|nt: &mut NickTracker| { nt.on_user_join(word) })
 }
@@ -131,7 +124,7 @@ fn user_join(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 /// Callback wrapper. Forwards 'Quit' text events on to `NickTracker` for
 /// handling.
 ///
-fn user_quit(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
+fn user_quit(_hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 {
     udata.apply(|nt: &NickTracker| { nt.on_user_quit(word) })
 }
@@ -139,7 +132,7 @@ fn user_quit(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 /// Callback wrapper. Forwards 'Change Nick' text events on to `NickTracker` for
 /// handling.
 ///
-fn change_nick(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
+fn change_nick(_hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 {
     udata.apply(|nt: &NickTracker| nt.on_user_change_nick(word))
 }
@@ -147,7 +140,7 @@ fn change_nick(hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 /// Callback wrapper for the `/DBTOGGLE` command which it forwards to 
 /// `NickTracker`. 
 /// 
-fn dbtoggle(hc       : &Hexchat,
+fn dbtoggle(_hc      : &Hexchat,
             word     : &[String],
             word_eol : &[String],
             udata    : &mut UserData
@@ -161,7 +154,7 @@ fn dbtoggle(hc       : &Hexchat,
 /// Callback wrapper for the `/IPLOOKUP` command wich forwards to `NickTracker`
 /// `on_cmd_ip_lookup()`.
 ///
-fn iplookup(hc       : &Hexchat,
+fn iplookup(_hc      : &Hexchat,
             word     : &[String],
             word_eol : &[String],
             udata    : &mut UserData
@@ -175,7 +168,7 @@ fn iplookup(hc       : &Hexchat,
 /// Callback wrapper for `/DBUPDATE` which fowards to `NickTracker`, 
 /// `on_cmd_update()`.
 ///
-fn dbupdate(hc       : &Hexchat,
+fn dbupdate(_hc      : &Hexchat,
             word     : &[String],
             word_eol : &[String],
             udata    : &mut UserData
@@ -189,7 +182,7 @@ fn dbupdate(hc       : &Hexchat,
 /// Command wrapper for `/DBWHO` which forwards to `NickTracker`, 
 ///`on_cmd_dbwho()`.
 ///
-fn dbwho(hc       : &Hexchat,
+fn dbwho(_hc      : &Hexchat,
          word     : &[String],
          word_eol : &[String],
          udata    : &mut UserData

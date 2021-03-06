@@ -10,18 +10,13 @@ use regex::Regex;
 use rusqlite::Connection;
 use rusqlite::functions::FunctionFlags;
 use rusqlite::NO_PARAMS;
-use rusqlite::params;
 use rusqlite::Result as SQLResult;
-use rusqlite::Rows;
-use std::sync::Condvar;
 use std::time::Duration;
-use std::sync::Mutex;
 
 use hexchat_api::*;
 
 use crate::nick_tracker::*;
 use crate::tracker_error::*;
-use crate::tor::*;
 
 /// How long a thread will wait for the DB to become available if it's locked.
 ///
@@ -71,6 +66,7 @@ impl NickData {
     /// * `tracker` - The `NickTracker` object.
     /// * `context` - The context that is bound to the chat the user is in.
     ///
+    #[allow(clippy::too_many_arguments)]
     pub (crate)
     fn print_related(&self,
                      nick    : &str,
@@ -82,7 +78,7 @@ impl NickData {
                      context : &ThreadSafeContext)
     {
         const IPV4_LEN: usize = 15;
-        const IPV6_LEN: usize = 39;
+        //const IPV6_LEN: usize = 39;
         
         if let Ok(db_entries) = self.get_db_entries(nick, host, account, 
                                                     address, network)
@@ -92,7 +88,7 @@ impl NickData {
                 if !address.is_empty() {
                     if let Ok(addr_info) = tracker.get_ip_addr_info(address) {
                         let [ip,  city, region, country,
-                             isp, lat,  lon,    link    ] = addr_info;
+                             isp, _lat,  _lon,    _link  ] = addr_info;
                         msg = {
                             if ip.len() > IPV4_LEN {
                                 format!("\x0309\x02{:-16}\x0F \
@@ -232,6 +228,7 @@ impl NickData {
     /// # Returns
     /// * `true` if the database was modified, `false` if not.
     ////
+    #[allow(clippy::too_many_arguments)]
     pub (crate)
     fn update_ip_addr_info(&self,
                            ip       : &str,
@@ -243,7 +240,7 @@ impl NickData {
                            lon      : &str
                           ) -> bool
     {
-        match || -> SQLResult<()> {
+        || -> SQLResult<()> {
             let conn = Connection::open(&self.path)?;
             conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
 
@@ -252,10 +249,7 @@ impl NickData {
                    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
                 ", &[ip, city, region, country, isp, lat, lon])?;
             Ok(())
-        }() {
-            Ok(_)  => true,
-            Err(_) => false,
-        }
+        }().is_ok()
     }
     
     /// Retrieves IP information from the database if it has it.
@@ -325,7 +319,7 @@ impl NickData {
                     }
                     nick_exp.push_str(r"[0-9_\-|]{0,6}$");
                 } else {
-                    nick_exp.insert_str(0, "^");
+                    nick_exp.insert(0, '^');
                     nick_exp.push_str(r"[0-9_\-|]{0,3}$");
                 }
                 Regex::new(&nick_exp)?
@@ -431,7 +425,7 @@ impl NickData {
                 return None
             }
         }
-        Some(db_path_string.to_string())
+        Some(db_path_string)
     }
 }
 

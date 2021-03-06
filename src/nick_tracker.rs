@@ -7,10 +7,6 @@ use regex::Regex;
 use serde_json::Value;
 use serde_json::from_str as parse_json;
 use std::collections::HashSet;
-use std::convert::From;
-use std::error::Error;
-use std::fmt;
-use std::thread;
 use std::time::Duration;
 use std::u32;
 use ureq::Agent;
@@ -23,7 +19,6 @@ use crate::dll_entry_points::*;
 
 use hexchat_api::*;
 use TrackerError::*;
-use UserData::*;
 
 // Regular expressions used to find the IP in the host string.
 const IPV6_EXPR      : &str  =  "(?:[0-9a-fA-F]+:){7}[0-9a-fA-F]+|\
@@ -45,12 +40,6 @@ const MAX_QUEUED_TASKS : usize = 10;
 /// network, and the second is the name of the channel.
 ///
 type ChanData = (String, String);
-
-/// Tracks the channels that have been activated for tracking. Any channel that
-/// has been activated should have an entry in this set. The entries are tuples
-/// of the channel's network name and channel name.
-///
-type ChanSet  = HashSet<ChanData>;
 
 /// The primary struct/class of the tracker. It provides handlers for the
 /// registered commands.
@@ -121,6 +110,7 @@ impl NickTracker {
     /// Like `write()` but takes a `Context` reference which sends the text
     /// to the window associated with that context.
     ///
+    #[allow(dead_code)]
     pub (crate)
     fn write_ctx(&self, msg: &str, ctx: &Context) {
         if ctx.print(msg).is_err() {
@@ -163,8 +153,8 @@ impl NickTracker {
     ///
     pub (crate)
     fn on_cmd_dbtoggle(&mut self, 
-                       word     : &[String], 
-                       word_eol : &[String]
+                       _word     : &[String], 
+                       _word_eol : &[String]
                       ) -> Eat 
     {
         if self.is_active() {
@@ -187,8 +177,8 @@ impl NickTracker {
     ///
     pub (crate)
     fn on_cmd_ip_lookup(&mut self, 
-                        word     : &[String], 
-                        word_eol : &[String]
+                        word      : &[String], 
+                        _word_eol : &[String]
                        ) -> Eat  
     {
         if word.len() != 2 {
@@ -207,9 +197,9 @@ impl NickTracker {
         thread_task(move || {
             match me.get_ip_addr_info(&ip_addr) {
                 Ok(ip_info) => {
-                    let [ip, city, 
+                    let [_ip, city, 
                          region, country,
-                         isp, lat, lon, link] = &ip_info;
+                         isp, _lat, _lon, link] = &ip_info;
                          
                     me.write_ts_ctx(
                         &format!("🌎\t\x0311IPLOOKUP ({}): {}, {} ({}) [{}]",
@@ -233,8 +223,8 @@ impl NickTracker {
     ///
     pub (crate)
     fn on_cmd_dbupdate(&mut self, 
-                        word     : &[String], 
-                        word_eol : &[String]
+                        word      : &[String], 
+                        _word_eol : &[String]
                        ) -> Eat  
     {
         if word.len() > 1 {
@@ -250,6 +240,7 @@ impl NickTracker {
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread_task(move || {
+            #[allow(clippy::single_match)]
             match || -> Result<(), TrackerError> {
 
                 cx.print("🤔\t\x0311DBUPDATE:")?;
@@ -301,8 +292,8 @@ impl NickTracker {
     ///
     pub (crate)
     fn on_cmd_dbwho(&mut self,
-                    word     : &[String],
-                    word_eol : &[String]
+                    word      : &[String],
+                    _word_eol : &[String]
                    ) -> Eat
     {
         if word.len() != 2 {
@@ -321,6 +312,7 @@ impl NickTracker {
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread_task(move || {
+            #[allow(clippy::single_match)]
             match || -> Result<(), TrackerError> {
                 cx.print(&format!("🕵️\t\x0311DBWHO: \x0309\x02{}", who))?;
                 let mut found = false;
@@ -334,7 +326,7 @@ impl NickTracker {
                        who_lc == account.to_lowercase() 
                     {
                         let info = me.get_user_info_ts(&user, &cx)?;
-                        let [nick, channel, 
+                        let [nick, _channel, 
                              host, account, 
                              address, network] = info;
                              
@@ -411,7 +403,7 @@ impl NickTracker {
     /// currently.
     ///
     pub (crate)
-    fn on_user_quit(&self, word: &[String]) -> Eat
+    fn on_user_quit(&self, _word: &[String]) -> Eat
     {
         if !self.is_active() {
             Eat::None
@@ -433,7 +425,6 @@ impl NickTracker {
             if num_queued_tasks() > MAX_QUEUED_TASKS {
                 return Eat::All;
             }
-            let (network, channel) = self.get_chan_data();
             let old_nick = word[0].clone();
             let new_nick = word[1].clone();
             
@@ -442,6 +433,7 @@ impl NickTracker {
             let cx = hc.get_context().unwrap();
             
             thread_task(move || {
+                #[allow(clippy::single_match)]
                 match || -> Result<(), TrackerError> {
                 
                     for user in cx.list_get("users").tor()? {
@@ -449,7 +441,7 @@ impl NickTracker {
                         let nick = user.get_field("nick").tor()?;
                         
                         if nick == old_nick || nick == new_nick {
-                            let [nick, 
+                            let [_nick, 
                                  channel, 
                                  host, 
                                  account, 
@@ -478,6 +470,7 @@ impl NickTracker {
     /// user. It constructs a slice containing the  'nick', 'account',
     /// 'host', etc.
     ///
+    #[allow(dead_code)]
     fn get_user_info(&self,
                      user    : &hexchat_api::ListIterator,
                      context : &Context
