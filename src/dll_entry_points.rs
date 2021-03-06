@@ -29,6 +29,13 @@ fn plugin_info() -> PluginInfo {
         "Keeps track of user nicknames.")
 }
 
+/// The addon's DLL initialization function called by Hexchat when the addon
+/// is loaded.
+/// # Arguements
+/// * `hc` - The Hexchat struct reference passed to the addon from Hexchat.
+/// # Returns
+/// * `1` indicating to Hexchat the addon was successfully loaded.
+///
 fn plugin_init(hc: &'static Hexchat) -> i32 {
     hc.print("Nicktracker loaded");
     
@@ -51,7 +58,14 @@ fn plugin_init(hc: &'static Hexchat) -> i32 {
     1
 }
 
-/// Called when the plugin is unloaded.
+/// Called when the plugin is unloaded. This will remove the task thread by 
+/// setting `THREAD_POOL` to `None`, then join existing threads before exiting.
+/// It's possible that a couple tasks may slip in before it's set to `None`
+/// but that should be fine.
+/// # Arguments
+/// * `hc` - The Hexchat reference.
+/// # Returns
+/// * `1`, indicating to Hexchat the addon was unloaded successfully.
 ///
 fn plugin_deinit(hc: &Hexchat) -> i32 {
     hc.print("Nicktracker unloaded");
@@ -64,6 +78,11 @@ fn plugin_deinit(hc: &Hexchat) -> i32 {
     1
 }
 
+/// Called by the application to schedule tasks that happen on another thread
+/// so the Hexchat GUI won't stagger or become laggy when operations like
+/// web service requests take more time than usual. With a separate task thread
+/// we should see no lags due to this addon's processing of user info.
+///
 pub (crate) fn thread_task<F>(job: F) 
 where F: FnOnce() + Send + 'static
 {
@@ -74,6 +93,10 @@ where F: FnOnce() + Send + 'static
     }
 }
 
+/// Reports how many tasks are in the threaded task handler queue.
+/// # Returns
+/// * The number of current tasks in the threaded task handler queue.
+///
 pub (crate) fn num_queued_tasks() -> usize {
     unsafe {
         if let Some(tp) = &THREAD_POOL {
