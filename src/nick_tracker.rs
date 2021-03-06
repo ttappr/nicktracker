@@ -153,14 +153,52 @@ impl NickTracker {
     ///
     pub (crate)
     fn on_cmd_dbtoggle(&mut self, 
-                       _word     : &[String], 
+                       word      : &[String], 
                        _word_eol : &[String]
                       ) -> Eat 
     {
-        if self.is_active() {
-            self.deactivate();
+        use FieldValue as FV;
+        
+        if word.len() == 1 {
+            if self.is_active() {
+                self.deactivate();
+            } else {
+                self.activate();
+            }
+        } else if word.len() == 2 && word[1].to_lowercase() == "all" {
+            if let Some(list) = ListIterator::new("channels") {
+                for item in list {
+                    if let Ok(FV::StringVal(network)) 
+                                    = item.get_field("network") {
+                            
+                    if let Ok(FV::StringVal(channel)) 
+                                    = item.get_field("channel") {
+                                    
+                        if channel == network {
+                            continue;
+                        }
+                            
+                        let chan_data = (network.to_string(), 
+                                         channel.to_string());
+                            
+                        if !self.chan_set.contains(&chan_data) {
+                            self.chan_set.insert(chan_data);
+                            self.write(
+                                &format!("🔎\t\x0311\
+                                         Nick Tracker enabled for ({}/{}).",
+                                         network, channel));        
+                        } else {
+                            self.chan_set.remove(&chan_data);
+                            self.write(
+                                &format!("🔎\t\x0311\
+                                         Nick Tracker disabled for ({}/{}).",
+                                         network, channel));        
+                        }
+                    }}
+                }
+            }
         } else {
-            self.activate();
+            self.write("💡\t\x0311Usage: DBTOGGLE [ALL]");
         }
         Eat::All
     }
