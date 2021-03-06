@@ -380,7 +380,7 @@ impl NickData {
                                    )
                AND (network LIKE ? OR
                     network LIKE 'elitebnc')
-               ORDER BY datetime_seen ASC
+               ORDER BY datetime_seen DESC
             ")?;
             
         conn.remove_function("NICKEXPR", 1)?;
