@@ -57,8 +57,8 @@ fn plugin_deinit(hc: &Hexchat) -> i32 {
     hc.print("Nicktracker unloaded");
     unsafe { 
         if let Some(tp) = &THREAD_POOL {
+            THREAD_POOL = None;
             tp.join();
-            THREAD_POOL = None; 
         }
     }
     1
@@ -85,7 +85,7 @@ pub (crate) fn num_queued_tasks() -> usize {
 }
 
 const DBTOGGLE_HELP : &str = "Toggles nick tracking on/off for the current \
-                             channel.";
+                              channel.";
 const IPLOOKUP_HELP : &str = "/IPLOOKUP <ip> Prints the geolocation for the \
                               IP.";
 const DBWHO_HELP    : &str = "/DBWHO <user> Lists the nicknames for the given \
@@ -131,6 +131,9 @@ fn dbtoggle(hc       : &Hexchat,
                     })
 }
 
+/// Callback wrapper for the `/IPLOOKUP` command wich forwards to `NickTracker`
+/// `on_cmd_ip_lookup()`.
+///
 fn iplookup(hc       : &Hexchat,
             word     : &[String],
             word_eol : &[String],
@@ -142,6 +145,9 @@ fn iplookup(hc       : &Hexchat,
                     })
 }
 
+/// Callback wrapper for `/DBUPDATE` which fowards to `NickTracker`, 
+/// `on_cmd_update()`.
+///
 fn dbupdate(hc       : &Hexchat,
             word     : &[String],
             word_eol : &[String],
@@ -153,6 +159,9 @@ fn dbupdate(hc       : &Hexchat,
                     })
 }
 
+/// Command wrapper for `/DBWHO` which forwards to `NickTracker`, 
+///`on_cmd_dbwho()`.
+///
 fn dbwho(hc       : &Hexchat,
          word     : &[String],
          word_eol : &[String],

@@ -88,12 +88,16 @@ It's fairly easy to set up a Rust build environment on your system. You can find
 instructions [here](https://www.rust-lang.org/learn/get-started). The process
 is automated using `rustup`. Once that's in place, simply clone this project 
 and launch the build process:
-* For Linux, if the build fails, installing sqlite3 dev package should fix it.
+
 * `git clone https://github.com/ttappr/hexchat_api.git`
 * `git clone https://github.com/ttappr/nicktracker.git`
 * `cd nicktracker`
 * `cargo build --release`
 * `cd target/release && ls -al` and there's your binary.
+
+Sqlite3 support is now statically linked, so the addon can be built without
+needing to install the sqlite3 dev package on Linux. And should build without
+additional requiremetns on Windows.
 
 ## Rust Hexchat API
 This project uses a 

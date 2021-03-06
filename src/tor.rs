@@ -110,6 +110,10 @@ impl Tor for Option<ThreadSafeContext> {
 impl Tor for Option<ThreadSafeListIterator> {
     type Target = ThreadSafeListIterator;
     
+    /// Converts `Option<ThreadSafeListIterator>` to 
+    /// `Result<ThreadSafeListIterator, TrackerError>` where `NoneError` is
+    /// reported if the `Option` value is `None`.
+    ///
     fn tor(&self) -> Result<Self::Target, TrackerError>
     {
         match self {
@@ -125,6 +129,9 @@ impl Tor for Option<ThreadSafeListIterator> {
 impl Tor for Result<ThreadSafeFieldValue, hexchat_api::ListError> {
     type Target = String;
     
+    /// Converts `Result<ThreadSafeFieldValue, ListError>` to 
+    /// `Result<String, TrackerError>`.
+    ///
     fn tor(&self) -> Result<Self::Target, TrackerError>
     {
         match self {
@@ -137,6 +144,10 @@ impl Tor for Result<ThreadSafeFieldValue, hexchat_api::ListError> {
 impl Tor for Option<hexchat_api::ListIterator> {
     type Target = hexchat_api::ListIterator;
     
+    /// Converts `Option<ListIterator>` to `Result<ListIterator, TrackerError>`
+    /// where `NoneError` is the reported error type if the `Option` value is
+    /// `None`.
+    ///
     fn tor(&self) -> Result<Self::Target, TrackerError>
     {
         match self {
@@ -173,6 +184,10 @@ impl Tor for Result<Option<String>, ContextError> {
 
 impl Tor for Result<Option<ThreadSafeListIterator>, ContextError> {
     type Target = ThreadSafeListIterator;
+    
+    /// Converts `Result<Option<ThreadSafeListIterator>` to 
+    /// `Result<ThreadSafeListIterator, TrackerError>`.`
+    ///
     fn tor(&self) -> Result<Self::Target, TrackerError>
     {
         match self {
