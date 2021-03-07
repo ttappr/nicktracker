@@ -336,9 +336,7 @@ impl NickData {
             move |ctx| {
                 let text = ctx.get_raw(0).as_str().unwrap();
                 let mut host_match = false;
-                for (_i, (t, h)) in text.chars()
-                                        .zip(host_string.chars())
-                                        .enumerate() 
+                for (t, h) in text.chars().zip(host_string.chars())
                 {
                     if t != h { 
                         break;
@@ -347,7 +345,7 @@ impl NickData {
                         break;
                     }
                 }
-                Ok(host_match)
+                Ok(false)
             })?;
         
         // Register a custom matching function with SQLite3
