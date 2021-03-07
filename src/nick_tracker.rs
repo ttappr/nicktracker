@@ -615,7 +615,13 @@ impl NickTracker {
         const LONGITUDE_IDX  : usize = 6;
         const MAP_ZOOM_LEVEL : i32   = 6;
 
-        if let Ok(ip_info) = self.nick_data.get_ip_addr_info(ip_addr) {
+        if let Ok(mut ip_info) = self.nick_data.get_ip_addr_info(ip_addr) {
+            let [_ip,  _city, _region, _country, 
+                 _isp,  lat,   lon, _date_added  ] = ip_info.clone();
+            let link = format!("http://maps.google.com/maps/place/\
+                                {},{}/@{},{},{}z",
+                               lat, lon, lat, lon, MAP_ZOOM_LEVEL);
+            ip_info[7] = link;
             Ok(ip_info)
         } else {
             let req = format!("http://ip-api.com/json/{}", ip_addr);
