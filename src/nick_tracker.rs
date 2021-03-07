@@ -614,14 +614,18 @@ impl NickTracker {
         const LATITUDE_IDX   : usize = 5;
         const LONGITUDE_IDX  : usize = 6;
         const MAP_ZOOM_LEVEL : i32   = 6;
-
-        if let Ok(mut ip_info) = self.nick_data.get_ip_addr_info(ip_addr) {
-            let lat    = &ip_info[5];
-            let lon    = &ip_info[6];
+        
+        fn add_link(ip_info: &mut [String]) {
+            let lat    = &ip_info[LATITUDE_IDX];
+            let lon    = &ip_info[LONGITUDE_IDX];
             let link   = format!("http://maps.google.com/maps/place/\
                                   {},{}/@{},{},{}z",
                                  lat, lon, lat, lon, MAP_ZOOM_LEVEL);
             ip_info[7] = link;
+        }
+
+        if let Ok(mut ip_info) = self.nick_data.get_ip_addr_info(ip_addr) {
+            add_link(&mut ip_info);
             Ok(ip_info)
         } else {
             let req = format!("http://ip-api.com/json/{}", ip_addr);
@@ -642,12 +646,7 @@ impl NickTracker {
                                     rsp_json["lon"].tor()?,
                                     String::new()];
 
-                    let lat  = &info[LATITUDE_IDX];
-                    let lon  = &info[LONGITUDE_IDX];
-                    let link = format!("http://maps.google.com/maps/place/\
-                                        {},{}/@{},{},{}z",
-                                       lat, lon, lat, lon, MAP_ZOOM_LEVEL);
-                    info[7] = link;
+                    add_link(&mut info);
                     
                     self.nick_data.update_ip_addr_info(&info[0], &info[1], 
                                                        &info[2], &info[3], 
