@@ -367,7 +367,6 @@ impl NickData {
                FROM    users
                WHERE  (NICKEXPR(nick)
                    OR  host LIKE ?
-                   OR  HOSTCHECK(host)
                    OR  (account<>'' AND account LIKE ?)
                    OR  (address<>'' AND address=?))
                AND (network LIKE ? OR network LIKE 'elitebnc')
