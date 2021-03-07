@@ -647,7 +647,7 @@ impl NickTracker {
                                     String::new()];
 
                     add_link(&mut info);
-                    
+
                     self.nick_data.update_ip_addr_info(&info[0], &info[1], 
                                                        &info[2], &info[3], 
                                                        &info[4], &info[5],

@@ -327,6 +327,28 @@ impl NickData {
                 Regex::new(nick)?
             }
         };
+        let host_string = host.to_string();
+        
+        conn.create_scalar_function(
+            "HOSTCHECK",
+            1,
+            FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+            move |ctx| {
+                let text = ctx.get_raw(0).as_str().unwrap();
+                let mut host_match = false;
+                for (_i, (t, h)) in text.chars()
+                                        .zip(host_string.chars())
+                                        .enumerate() 
+                {
+                    if t != h { 
+                        break;
+                    } else if t == '@' {
+                        host_match = true;
+                    }
+                }
+                Ok(host_match)
+            })?;
+        
         // Register a custom matching function with SQLite3
         // to help find nicks that fuzzily match.
         conn.create_scalar_function(
@@ -345,6 +367,7 @@ impl NickData {
                FROM    users
                WHERE  (NICKEXPR(nick)
                    OR  host LIKE ?
+                   OR  HOSTCHECK(host)
                    OR  (account<>'' AND account LIKE ?)
                    OR  (address<>'' AND address=?))
                AND (network LIKE ? OR network LIKE 'elitebnc')
@@ -370,7 +393,7 @@ impl NickData {
             ")?;
             
         conn.remove_function("NICKEXPR", 1)?;
-            
+        conn.remove_function("HOSTCHECK", 1)?;    
         let rows = statement.query(&[network])?;
         
         let vrows: Vec<[String;4]> = rows.map(|r| Ok([r.get(0)?, r.get(1)?,
