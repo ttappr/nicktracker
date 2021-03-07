@@ -327,6 +327,7 @@ impl NickData {
                 Regex::new(nick)?
             }
         };
+        /*
         let host_string = host.to_string();
         
         conn.create_scalar_function(
@@ -347,7 +348,7 @@ impl NickData {
                 }
                 Ok(false)
             })?;
-        
+        */ 
         // Register a custom matching function with SQLite3
         // to help find nicks that fuzzily match.
         conn.create_scalar_function(
@@ -392,7 +393,7 @@ impl NickData {
             ")?;
             
         conn.remove_function("NICKEXPR", 1)?;
-        conn.remove_function("HOSTCHECK", 1)?;    
+        //conn.remove_function("HOSTCHECK", 1)?;    
         let rows = statement.query(&[network])?;
         
         let vrows: Vec<[String;4]> = rows.map(|r| Ok([r.get(0)?, r.get(1)?,
