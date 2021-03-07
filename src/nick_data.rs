@@ -344,6 +344,7 @@ impl NickData {
                         break;
                     } else if t == '@' {
                         host_match = true;
+                        break;
                     }
                 }
                 Ok(host_match)
