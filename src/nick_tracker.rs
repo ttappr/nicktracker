@@ -616,11 +616,11 @@ impl NickTracker {
         const MAP_ZOOM_LEVEL : i32   = 6;
 
         if let Ok(mut ip_info) = self.nick_data.get_ip_addr_info(ip_addr) {
-            let [_ip,  _city, _region, _country, 
-                 _isp,  lat,   lon, _date_added  ] = ip_info.clone();
-            let link = format!("http://maps.google.com/maps/place/\
-                                {},{}/@{},{},{}z",
-                               lat, lon, lat, lon, MAP_ZOOM_LEVEL);
+            let lat    = &ip_info[5];
+            let lon    = &ip_info[6];
+            let link   = format!("http://maps.google.com/maps/place/\
+                                  {},{}/@{},{},{}z",
+                                 lat, lon, lat, lon, MAP_ZOOM_LEVEL);
             ip_info[7] = link;
             Ok(ip_info)
         } else {
