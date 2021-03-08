@@ -11,6 +11,9 @@ use rusqlite::Connection;
 use rusqlite::functions::FunctionFlags;
 use rusqlite::NO_PARAMS;
 use rusqlite::Result as SQLResult;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use hexchat_api::*;
@@ -27,6 +30,8 @@ const DB_BUSY_TIMEOUT: u64 = 5; // Seconds.
 ///
 const MAX_ROWS_PRINT : usize = 15;
 
+type RegexMap = HashMap<String, Arc<Regex>>;
+
 /// The `NickData` object interacts with the nickname/user info database.
 /// It handles the queries and other operations.
 ///
@@ -34,8 +39,9 @@ const MAX_ROWS_PRINT : usize = 15;
 pub (crate)
 struct NickData {
     hc         : &'static Hexchat,
-    trunc_expr : Regex,
     path       : String,
+    trunc_expr : Regex,
+    expr_cache : Arc<Mutex<RegexMap>>,
 }
 
 impl NickData {
@@ -46,16 +52,19 @@ impl NickData {
     pub (crate)
     fn new(hc: &'static Hexchat) -> Self {
         if let Some(path) = Self::check_database(hc) {
+            //let conn = Connection::open(&path).unwrap();
+            //NickData::add_regexp_function(&conn).unwrap();
             NickData { 
                 hc,
                 path, 
                 trunc_expr : Regex::new(r"[0-9_\-|]{0,3}$").unwrap(),
+                expr_cache : Arc::new(Mutex::new(HashMap::new())),
             }
         } else {
             panic!("Unable to create new database for Nick Tracker.");
         }
     }
-    
+
     /// Prints the DB records related to the user info given in the paramters.
     /// # Arguments
     /// * `nick`    - The nickname to print the related records of.
@@ -138,6 +147,75 @@ impl NickData {
                    UNIQUE(ip)
                ) ", NO_PARAMS)?;
         Ok(())
+    }
+    
+    /// Adds an expression function to the database. The function will take
+    /// one argument and return a boolean value if the value passed to the
+    /// database function matches.
+    ///
+    fn add_bool_one_input_expr(&self, 
+                               name : &str,
+                               expr : &str, 
+                               conn : &Connection
+                              ) -> Result<(), TrackerError> 
+    {
+        let expr_cache = &mut *self.expr_cache.lock().unwrap();
+        
+        let expr = match expr_cache.get(expr) {
+            Some(expr) => expr.clone(),
+            None => {
+                expr_cache.insert(expr.to_string(), 
+                                  Arc::new(Regex::new(expr)?));
+                expr_cache.get(expr).unwrap().clone()
+            }
+        };
+        conn.create_scalar_function(
+            name,
+            1,
+            FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+            move |ctx| {
+                let text = ctx.get_raw(0).as_str().unwrap();
+                Ok(expr.is_match(text))
+            })?;
+        Ok(())
+    }
+    
+    /// Adds a comparison function to the database that takes two arguments. The
+    /// expression will be applied to both arguments, and then their results
+    /// are compared. Returns `true` if they match and `false` if not.
+    ///
+    fn add_bool_two_input_apply_and_compare_expr(&self,
+                                                 name : &str,
+                                                 expr : &str,
+                                                 conn : &Connection
+                                                ) -> Result<(), TrackerError>
+    {
+        let expr_cache = &mut *self.expr_cache.lock().unwrap();
+        
+        let expr = match expr_cache.get(expr) {
+            Some(expr) => expr.clone(),
+            None => {
+                expr_cache.insert(expr.to_string(), 
+                                  Arc::new(Regex::new(expr)?));
+                expr_cache.get(expr).unwrap().clone()
+            }
+        };
+        conn.create_scalar_function(
+            name,
+            2,
+            FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+            move |ctx| {
+                let text_a = ctx.get_raw(0).as_str().unwrap();
+                let text_b = ctx.get_raw(1).as_str().unwrap();
+                let mut is_match = false;
+                if let Some(match_a) = expr.find(text_a) {
+                    if let Some(match_b) = expr.find(text_b) {
+                        is_match = match_a == match_b;
+                    }
+                }
+                Ok(is_match)
+            })?;
+        Ok(())        
     }
     
     /// Adds the user's information to the database if it isn't already there.
@@ -322,55 +400,32 @@ impl NickData {
                     nick_exp.insert(0, '^');
                     nick_exp.push_str(r"[0-9_\-|]{0,3}$");
                 }
-                Regex::new(&nick_exp)?
+                nick_exp
             } else {
-                Regex::new(nick)?
+                nick.to_string()
             }
         };
-        /*
-        let host_string = host.to_string();
+
+        self.add_bool_one_input_expr("NICK_EXPR", &nick_expr, &conn)?;
         
-        conn.create_scalar_function(
-            "HOSTCHECK",
-            1,
-            FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
-            move |ctx| {
-                let text = ctx.get_raw(0).as_str().unwrap();
-                let mut host_match = false;
-                for (t, h) in text.chars().zip(host_string.chars())
-                {
-                    if t != h { 
-                        break;
-                    } else if t == '@' {
-                        host_match = true;
-                        break;
-                    }
-                }
-                Ok(false)
-            })?;
-        */ 
-        // Register a custom matching function with SQLite3
-        // to help find nicks that fuzzily match.
-        conn.create_scalar_function(
-            "NICKEXPR",
-            1,
-            FunctionFlags::SQLITE_UTF8  | FunctionFlags::SQLITE_DETERMINISTIC,
-            move |ctx| {
-                let text = ctx.get_raw(0).as_str().unwrap();
-                Ok(nick_expr.is_match(text))
-            })?;
+        self.add_bool_two_input_apply_and_compare_expr(
+                                     "OBFUSCATED_HOST_IP_EXPR", 
+                                     r"irc-(?:[\w.]+\.){3,4}IP$",
+                                     &conn)?;
+
         // Create a temporary table to facilitate the query.
         conn.execute(r"DROP TABLE IF EXISTS temp_table1", NO_PARAMS)?;
         conn.execute(
             r" CREATE TEMP TABLE temp_table1 AS
                SELECT  DISTINCT *
                FROM    users
-               WHERE  (NICKEXPR(nick)
+               WHERE  (NICK_EXPR(nick)
                    OR  host LIKE ?
+                   OR  OBFUSCATED_HOST_IP_EXPR(?, host)
                    OR  (account<>'' AND account LIKE ?)
                    OR  (address<>'' AND address=?))
                AND (network LIKE ? OR network LIKE 'elitebnc')
-            ", &[host, account, address, network])?;
+            ", &[host, host, account, address, network])?;
             
         // Query again using additional field values gathered from first 
         // query.
@@ -390,9 +445,7 @@ impl NickData {
                     network LIKE 'elitebnc')
                ORDER BY datetime_seen DESC
             ")?;
-            
-        conn.remove_function("NICKEXPR", 1)?;
-        //conn.remove_function("HOSTCHECK", 1)?;    
+        
         let rows = statement.query(&[network])?;
         
         let vrows: Vec<[String;4]> = rows.map(|r| Ok([r.get(0)?, r.get(1)?,

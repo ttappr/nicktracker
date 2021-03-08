@@ -25,6 +25,8 @@ const IPV6_EXPR      : &str  =  "(?:[0-9a-fA-F]+:){7}[0-9a-fA-F]+|\
                                  (?:[0-9a-fA-F]+-){7}[0-9a-fA-F]+";
 const IPV4_EXPR      : &str  = r"\d+\.\d+\.\d+\.\d+|\d+-\d+-\d+-\d+";
 
+const IP_OBFUSC_EXPR : &str  = r"irc-(?:[\w.]+\.){4}IP$";
+
 // Expression used in re.sub() calls below to delimit the IP address.
 // Matches (non)standard delimiters and leading 0's in address parts.
 // r"(?:^|\.|-|:)0*(?!\.|-|:|$)" won't work because Rust regex doesn't have
@@ -51,6 +53,7 @@ struct NickTracker {
     ipv6_expr   : Regex,
     ipv4_expr   : Regex,
     dlim_expr   : Regex,
+    ipob_expr   : Regex,
     chan_set    : HashSet::<ChanData>,
     nick_data   : NickData,
     http_agent  : Agent,
@@ -68,6 +71,7 @@ impl NickTracker {
             ipv6_expr   : Regex::new(IPV6_EXPR).unwrap(),
             ipv4_expr   : Regex::new(IPV4_EXPR).unwrap(),
             dlim_expr   : Regex::new(DLIM_EXPR).unwrap(),
+            ipob_expr   : Regex::new(IP_OBFUSC_EXPR).unwrap(),
             chan_set    : HashSet::<ChanData>::new(),
             nick_data   : NickData::new(hc),
             http_agent  : AgentBuilder::new()
