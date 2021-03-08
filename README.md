@@ -125,6 +125,12 @@ Rather than keep handwritten notes, I figured if I could use automation to
 retain just enough info on users to jog my memory, it would help. So that's how 
 this addon came about.
 
+In most IRC channels, people tend to prefer to keep the same nick and not
+change them to help the continuity of social interaction; however, there are
+channels where this isn't always the case, and there are individuals in any
+channel that don't seem to get how keeping an identifiable regular nick helps
+this continuity - or they prefer to interrupt it for whatever reason.
+
 If I found myself talking to someone and I sensed they expected me to know
 we had talked before, but I couldn't figure out who they were because they'd 
 used another nick that day, I could use the `/DBWHO` feature to get a listing
