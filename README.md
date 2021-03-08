@@ -114,10 +114,17 @@ plugins. It has some nice features like
 
 This was first put together as a way to help keep track of and remember all the
 interesting people that I would meet in day-to-day chat. People would change
-their nicks subtly or significantly with enough frequency to keep me guessing.
+their nicks subtly, or significantly, with enough frequency to keep me guessing.
 Rather than keep handwritten notes, I figured if I could use automation to 
 retain just enough info on users to jog my memory, it would help. So that's how 
 this addon came about.
+
+If I found myself talking to someone and I sensed they expected me to know
+we had talked before, but I couldn't figure out who they were because they'd 
+used another nick that day, I could use the `/DBWHO` feature to get a listing
+of the other nicks they used. Although when people enter chat it gives their
+host information in the announcement, that information is easy to overlook
+and even easier to forget. But the addon provided a way around that.
 
 After some time, I realized this was useful in other ways. For instance in a
 chat that I frequented, there were occasional troublemakers whose MO was to 
@@ -126,14 +133,14 @@ using the regular's nick with offensive statements to try and get them banned.
 Real immature stuff. With this tool, it was easy to separate the imposters from 
 the regulars and inform other users and the channel mods.
 
-Having geolocation redily presented for users, I also learned something about 
+Having geolocation readily presented for users, I also learned something about 
 people just knowing what parts of the world they came from and it expanded my 
 awareness of geography and culture. Places I didn't know where they were on 
 the map could be easily brought up in the browser from the links provided by
 `/IPLOOKUP`.
 
 I'd thought about other features that could be added to help users keep track
-of eachother (in a good way). For instance, there's a `.grab` command available
+of each other (in a good way). For instance, there's a `.grab` command available
 on some netoworks that keeps a database of user quotes. Not every channel has
 that - so that's one idea. 
 
