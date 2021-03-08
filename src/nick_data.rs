@@ -159,6 +159,7 @@ impl NickData {
                                conn : &Connection
                               ) -> Result<(), TrackerError> 
     {
+        use rusqlite::Error as SQLError;
         let expr_cache = self.expr_cache.clone();
         conn.create_scalar_function(
             "REGEX_FIND",
@@ -166,18 +167,27 @@ impl NickData {
             FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
             move |ctx| {
                 let expr_cache = &mut *expr_cache.lock().unwrap();
-                let expr_text  = ctx.get_raw(0).as_str().unwrap();
-                let targ_text  = ctx.get_raw(1).as_str().unwrap();
+                let expr_text  = ctx.get_raw(0).as_str()
+                                               .map_err(|e| 
+                                                    SQLError::UserFunctionError(
+                                                        e.into()))?;
+                let targ_text  = ctx.get_raw(1).as_str()
+                                               .map_err(|e| 
+                                                    SQLError::UserFunctionError(
+                                                        e.into()))?;
                 
                 let expr = match expr_cache.get(expr_text) {
                     Some(expr) => expr.clone(),
                     None => {
-                        expr_cache.insert(expr_text.to_string(),
-                                          Arc::new(Regex::new(expr_text)
-                                                          .unwrap()));
+                        expr_cache.insert(
+                            expr_text.to_string(),
+                            Arc::new(Regex::new(expr_text)
+                                     .map_err(|e| 
+                                          SQLError::UserFunctionError(
+                                                e.into()))?));
                         expr_cache.get(expr_text).unwrap().clone()
                     }
-                };
+                }; 
                 Ok(expr.find(targ_text).map_or("", |m| m.as_str()).to_string())
             })?;
         Ok(())
@@ -194,6 +204,7 @@ impl NickData {
                                 conn : &Connection,
                                ) -> Result<(), TrackerError> 
     {
+        use rusqlite::Error as SQLError;
         let expr_cache = self.expr_cache.clone();
         conn.create_scalar_function(
             "REGEX_MATCH",
@@ -201,15 +212,24 @@ impl NickData {
             FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
             move |ctx| {
                 let expr_cache = &mut *expr_cache.lock().unwrap();
-                let expr_text  = ctx.get_raw(0).as_str().unwrap();
-                let targ_text  = ctx.get_raw(1).as_str().unwrap();
+                let expr_text  = ctx.get_raw(0).as_str()
+                                               .map_err(|e| 
+                                                    SQLError::UserFunctionError(
+                                                        e.into()))?;
+                let targ_text  = ctx.get_raw(1).as_str()
+                                               .map_err(|e| 
+                                                    SQLError::UserFunctionError(
+                                                        e.into()))?;
                 
                 let expr = match expr_cache.get(expr_text) {
                     Some(expr) => expr.clone(),
                     None => {
-                        expr_cache.insert(expr_text.to_string(),
-                                          Arc::new(Regex::new(expr_text)
-                                                          .unwrap()));
+                        expr_cache.insert(
+                            expr_text.to_string(),
+                            Arc::new(Regex::new(expr_text)
+                                     .map_err(|e| 
+                                          SQLError::UserFunctionError(
+                                                e.into()))?));
                         expr_cache.get(expr_text).unwrap().clone()
                     }
                 };
