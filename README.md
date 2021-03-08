@@ -2,7 +2,13 @@
 # Hexchat Nick Tracker
 
 **PLEASE USE THIS TOOL WITH MATURITY AND DISCRETION**
-*(be responsible - don't be a creeper)***.**
+*([be responsible - don't be a creeper](#the-creep-factor))***.**
+
+This is a Rust port of a tool I developed a couple years ago using Python in
+an effort to enhance my sociable efforts to remember who I chatted with
+on IRC. To understand the rationale behind the tool and get ideas on how it
+can be used, you can check out the section, 
+[Uses For The Addon](#uses-for-the-addon).
 
 This addon builds a database of metadata for each visitor to a channel. With 
 this information, it can identify users despite them changing nicknames or
@@ -154,7 +160,7 @@ if some discretion isn't used.
 Many new users, and even old-timers, on IRC networks value their privacy and
 expect some respect to be given that fact. If a user joins a channel and 
 a regular, with the simple intention of being friendly, asks them right off the
-bat how the weather is in Orlando Florida, that can sometimes evoke an extreme
+bat how the weather is in Orlando Florida, that can sometimes evoke a bad
 reaction in people. In the worst case it can make them feel unsafe on
 IRC and never come back.
 
