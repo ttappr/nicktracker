@@ -110,6 +110,33 @@ plugins. It has some nice features like
   tabs/windows in the UI.
 * Panic's are caught and displayed in the active window.
 
+## Uses For The Addon
+
+This was first put together as a way to help keep track of and remember all the
+interesting people that I would meet in day-to-day chat. People would change
+their nicks subtly or significantly with enough frequency to keep me guessing.
+Rather than keep handwritten notes, I figured if I could use automation to 
+retain just enough info on users to jog my memory, it would help. So that's how 
+this addon came about.
+
+After some time, I realized this was useful in other ways. For instance in a
+chat that I frequented, there were occasional troublemakers whose MO was to 
+pretend to be one of the regulars to make trouble for them by PMing other users
+using the regular's nick with offensive statements to try and get them banned.
+Real immature stuff. With this tool, it was easy to separate the imposters from 
+the regulars and inform other users and the channel mods.
+
+Having geolocation redily presented for users, I also learned something about 
+people just knowing what parts of the world they came from and it expanded my 
+awareness of geography and culture. Places I didn't know where they were on 
+the map could be easily brought up in the browser from the links provided by
+`/IPLOOKUP`.
+
+I'd thought about other features that could be added to help users keep track
+of eachother (in a good way). For instance, there's a `.grab` command available
+on some netoworks that keeps a database of user quotes. Not every channel has
+that - so that's one idea. 
+
 ## The Creep Factor
 
 One would hope that it wouldn't be necessary to explain this, but with the 

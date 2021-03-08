@@ -30,6 +30,8 @@ const DB_BUSY_TIMEOUT: u64 = 5; // Seconds.
 ///
 const MAX_ROWS_PRINT : usize = 15;
 
+// The type for the map that caches `Regex`s used in queries.
+//
 type RegexMap = HashMap<String, Arc<Regex>>;
 
 /// The `NickData` object interacts with the nickname/user info database.
@@ -159,6 +161,11 @@ impl NickData {
                                conn : &Connection
                               ) -> Result<(), TrackerError> 
     {
+        // TODO - The function body of this is nearly identical to the other
+        //        SQL function registering function exept for the return type.
+        //        I could DRY this out with a macro, but that solution seems
+        //        uglier than the problem. Unless I can find a more elegant
+        //        way of implementing this, I'm leaving it as is for now.
         use rusqlite::Error as SQLError;
         let expr_cache = self.expr_cache.clone();
         conn.create_scalar_function(
@@ -528,5 +535,5 @@ impl NickData {
         Some(db_path_string)
     }
 }
-
+    
 
