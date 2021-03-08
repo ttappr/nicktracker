@@ -149,73 +149,73 @@ impl NickData {
         Ok(())
     }
     
-    /// Adds an expression function to the database. The function will take
-    /// one argument and return a boolean value if the value passed to the
-    /// database function matches.
+    /// Adds a `REGEX_FIND` function to the SQL database, for use in queries.
+    /// Expressions are cached, and SQLite also uses a form of LRU cache so
+    /// the function doesn't need to be reexecuted if given params SQLite 
+    /// has already seen passed to it. This find function will return the 
+    /// match result as a string (`Regex.find()` is applied).
     ///
-    fn add_bool_one_input_expr(&self, 
-                               name : &str,
-                               expr : &str, 
+    fn add_regex_find_function(&self,
                                conn : &Connection
                               ) -> Result<(), TrackerError> 
     {
-        let expr_cache = &mut *self.expr_cache.lock().unwrap();
-        
-        let expr = match expr_cache.get(expr) {
-            Some(expr) => expr.clone(),
-            None => {
-                expr_cache.insert(expr.to_string(), 
-                                  Arc::new(Regex::new(expr)?));
-                expr_cache.get(expr).unwrap().clone()
-            }
-        };
+        let expr_cache = self.expr_cache.clone();
         conn.create_scalar_function(
-            name,
-            1,
+            "REGEX_FIND",
+            2,
             FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
             move |ctx| {
-                let text = ctx.get_raw(0).as_str().unwrap();
-                Ok(expr.is_match(text))
+                let expr_cache = &mut *expr_cache.lock().unwrap();
+                let expr_text  = ctx.get_raw(0).as_str().unwrap();
+                let targ_text  = ctx.get_raw(1).as_str().unwrap();
+                
+                let expr = match expr_cache.get(expr_text) {
+                    Some(expr) => expr.clone(),
+                    None => {
+                        expr_cache.insert(expr_text.to_string(),
+                                          Arc::new(Regex::new(expr_text)
+                                                          .unwrap()));
+                        expr_cache.get(expr_text).unwrap().clone()
+                    }
+                };
+                Ok(expr.find(targ_text).map_or("", |m| m.as_str()).to_string())
             })?;
         Ok(())
     }
     
-    /// Adds a comparison function to the database that takes two arguments. The
-    /// expression will be applied to both arguments, and then their results
-    /// are compared. Returns `true` if they match and `false` if not.
+    /// Adds a `REGEX_MATCH` function to the SQL database, for use in queries.
+    /// Expressions are cached, and SQLite also uses a form of LRU cache so
+    /// the function doesn't need to be reexecuted if given params SQLite 
+    /// has already seen passed to it. This match function will return a 
+    /// boolean to SQLite if the expression as param 1 matches the data as
+    /// param 2.
     ///
-    fn add_bool_two_input_apply_and_compare_expr(&self,
-                                                 name : &str,
-                                                 expr : &str,
-                                                 conn : &Connection
-                                                ) -> Result<(), TrackerError>
+    fn add_regex_match_function(&self,
+                                conn : &Connection,
+                               ) -> Result<(), TrackerError> 
     {
-        let expr_cache = &mut *self.expr_cache.lock().unwrap();
-        
-        let expr = match expr_cache.get(expr) {
-            Some(expr) => expr.clone(),
-            None => {
-                expr_cache.insert(expr.to_string(), 
-                                  Arc::new(Regex::new(expr)?));
-                expr_cache.get(expr).unwrap().clone()
-            }
-        };
+        let expr_cache = self.expr_cache.clone();
         conn.create_scalar_function(
-            name,
+            "REGEX_MATCH",
             2,
             FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
             move |ctx| {
-                let text_a = ctx.get_raw(0).as_str().unwrap();
-                let text_b = ctx.get_raw(1).as_str().unwrap();
-                let mut is_match = false;
-                if let Some(match_a) = expr.find(text_a) {
-                    if let Some(match_b) = expr.find(text_b) {
-                        is_match = match_a == match_b;
+                let expr_cache = &mut *expr_cache.lock().unwrap();
+                let expr_text  = ctx.get_raw(0).as_str().unwrap();
+                let targ_text  = ctx.get_raw(1).as_str().unwrap();
+                
+                let expr = match expr_cache.get(expr_text) {
+                    Some(expr) => expr.clone(),
+                    None => {
+                        expr_cache.insert(expr_text.to_string(),
+                                          Arc::new(Regex::new(expr_text)
+                                                          .unwrap()));
+                        expr_cache.get(expr_text).unwrap().clone()
                     }
-                }
-                Ok(is_match)
+                };
+                Ok(expr.is_match(targ_text))
             })?;
-        Ok(())        
+        Ok(())
     }
     
     /// Adds the user's information to the database if it isn't already there.
@@ -406,12 +406,13 @@ impl NickData {
             }
         };
 
-        self.add_bool_one_input_expr("NICK_EXPR", &nick_expr, &conn)?;
-        
-        self.add_bool_two_input_apply_and_compare_expr(
-                                     "OBFUSCATED_HOST_IP_EXPR", 
-                                     r"irc-(?:[\w.]+\.){3,4}IP$",
-                                     &conn)?;
+        // Add regular expression functions to the SQLite database.
+        self.add_regex_find_function(&conn)?;
+        self.add_regex_match_function(&conn)?;
+
+        // This matches the format for obfuscated IP's on networks like
+        // snoonet.
+        let obfuscated_ip_expr = r"irc-(?:[\w.]+\.){3,4}IP$";
 
         // Create a temporary table to facilitate the query.
         conn.execute(r"DROP TABLE IF EXISTS temp_table1", NO_PARAMS)?;
@@ -419,13 +420,17 @@ impl NickData {
             r" CREATE TEMP TABLE temp_table1 AS
                SELECT  DISTINCT *
                FROM    users
-               WHERE  (NICK_EXPR(nick)
+               WHERE  (REGEX_MATCH(?, nick)
                    OR  host LIKE ?
-                   OR  OBFUSCATED_HOST_IP_EXPR(?, host)
+                   OR  (REGEX_FIND(?, ?)<>'' 
+                        AND REGEX_FIND(?, ?)=REGEX_FIND(?, host))
                    OR  (account<>'' AND account LIKE ?)
                    OR  (address<>'' AND address=?))
                AND (network LIKE ? OR network LIKE 'elitebnc')
-            ", &[host, host, account, address, network])?;
+            ", &[&nick_expr, host, 
+                 obfuscated_ip_expr, host, 
+                 obfuscated_ip_expr, host, obfuscated_ip_expr, 
+                 account, address, network])?;
             
         // Query again using additional field values gathered from first 
         // query.
