@@ -416,7 +416,7 @@ impl NickData {
                                                   .to_string();
                 if nick_exp.len() < 4 {
                     nick_exp.clear();
-                    nick_exp.push('^');
+                    nick_exp.push_str("^_*");
                     if nick.len() > 4 {
                         nick_exp.push_str(&nick[0..4]);
                     } else {
@@ -424,7 +424,7 @@ impl NickData {
                     }
                     nick_exp.push_str(r"[0-9_\-|]{0,6}$");
                 } else {
-                    nick_exp.insert(0, '^');
+                    nick_exp.insert_str(0, "^_*");
                     nick_exp.push_str(r"[0-9_\-|]{0,3}$");
                 }
                 nick_exp
