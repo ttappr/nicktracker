@@ -138,12 +138,17 @@ of the other nicks they used. Although when people enter chat it gives their
 host information in the announcement, that information is easy to overlook
 and even easier to forget. But the addon provided a way around that.
 
-After some time, I realized this was useful in other ways. For instance in a
-chat that I frequented, there were occasional troublemakers whose MO was to 
-pretend to be one of the regulars to make trouble for them by PMing other users
-using the regular's nick with offensive statements to try and get them banned.
-Real immature stuff. With this tool, it was easy to separate the imposters from 
-the regulars and inform other users and the channel mods.
+After some time, I realized the addon was useful in other ways. For instance, in 
+a chat that I frequented, there were occasional troublemakers whose MO was to 
+single out and impersonate a regular who wasn't present. Using the same nick, 
+or a similar one as the regular, they would PM the other channel users with 
+offensive statements until they got people upset and asking for the mods to ban
+the target. And that could have succeeded in a couple of cases; but I was easily 
+able to see they were imposters from the `/DBWHO` info, and the custom channel 
+announcement, the addon provides. And I let the other users know it was an 
+imposter saving the target the frustration it may have caused them if they'd 
+have been banned. The other users were really convinced by this nonsense until
+I pointed out the situation.
 
 Having geolocation readily presented for users, I also learned something about 
 people just knowing what parts of the world they came from and it expanded my 
