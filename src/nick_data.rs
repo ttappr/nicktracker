@@ -439,7 +439,7 @@ impl NickData {
 
         // This matches the format for obfuscated IP's on networks like
         // snoonet.
-        let obfuscated_ip_expr = r"irc-(?:[\w.]+\.){3,4}IP$";
+        let obfuscated_ip_expr = r"irc-(?:[\w]+\.){3,4}IP$";
 
         // Create a temporary table to facilitate the query.
         conn.execute(r"DROP TABLE IF EXISTS temp_table1", NO_PARAMS)?;
@@ -472,7 +472,7 @@ impl NickData {
                    OR  (address<>'' AND address 
                                IN  (SELECT DISTINCT address  
                                                          FROM temp_table1))
-                                   )
+                      )
                AND (network LIKE ? OR
                     network LIKE 'elitebnc')
                ORDER BY datetime_seen DESC
@@ -490,6 +490,11 @@ impl NickData {
     /// This checks for the existence of the database, and creates it if it
     /// doesn't exist. It will try and determine where the `addons` folder is
     /// on the user's system in an OS agnostic way.
+    /// # Arguments
+    /// * `hc` - The Hexchat reference.
+    /// # Returns
+    /// * The path to the sqlite3 user information database in the config
+    ///   folder of the user.
     ///
     fn check_database(hc: &Hexchat) -> Option<String> {
         let addons_path = Path::new(&hc.get_info("xchatdir")
