@@ -68,6 +68,22 @@ impl NickData {
         }
     }
 
+    /// Escapes the underscores and percent characters in strings to be passed
+    /// to the SQL `LIKE` operation. In SQL `%` and `_` are wildcards in the 
+    /// `LIKE` operation.
+    ///
+    fn sql_escape(s: &str) -> String {
+        let mut es = String::new();
+        for ch in s.chars() {
+            match ch {
+                '_' => es.push_str(r"\_"),
+                '%' => es.push_str(r"\%"),
+                _   => es.push(ch),
+            }
+        }
+        es
+    }
+
     /// Prints the DB records related to the user info given in the paramters.
     /// # Arguments
     /// * `nick`    - The nickname to print the related records of.
@@ -262,7 +278,7 @@ impl NickData {
             let mut rec_added = false;
             let     conn      = Connection::open(&self.path)?;
             
-            let network_esc = sql_escape(network);
+            let network_esc = NickData::sql_escape(network);
             
             conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
             
@@ -430,9 +446,9 @@ impl NickData {
             }
         };
 
-        let network_esc = sql_escape(network);
-        let account_esc = sql_escape(account);
-        let host_esc    = sql_escape(host);
+        let network_esc = NickData::sql_escape(network);
+        let account_esc = NickData::sql_escape(account);
+        let host_esc    = NickData::sql_escape(host);
 
         // Add regular expression functions to the SQLite database.
         self.add_regex_find_function(&conn)?;
@@ -454,7 +470,7 @@ impl NickData {
                         AND REGEX_FIND(?, ?)=REGEX_FIND(?, host))
                    OR  (account<>'' AND account LIKE ? ESCAPE '\')
                    OR  (address<>'' AND address=?))
-               AND (network LIKE ? ESCAPE '\' OR network LIKE 'elitebnc')
+               AND network LIKE ? ESCAPE '\'
             ", &[&nick_expr, &host_esc, 
                  obfuscated_ip_expr, host, 
                  obfuscated_ip_expr, host, obfuscated_ip_expr, 
@@ -474,8 +490,7 @@ impl NickData {
                                IN  (SELECT DISTINCT address  
                                                          FROM temp_table1))
                       )
-               AND (network LIKE ? ESCAPE '\' OR
-                    network LIKE 'elitebnc')
+               AND network LIKE ? ESCAPE '\'
                ORDER BY datetime_seen DESC
             ")?;
         
@@ -540,18 +555,6 @@ impl NickData {
         }
         Some(db_path_string)
     }
-}
-    
-fn sql_escape(s: &str) -> String {
-    let mut es = String::new();
-    for ch in s.chars() {
-        match ch {
-            '_' => es.push_str(r"\_"),
-            '%' => es.push_str(r"\%"),
-            _   => es.push(ch),
-        }
-    }
-    es
 }
 
 
