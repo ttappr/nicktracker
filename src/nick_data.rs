@@ -8,6 +8,7 @@ use fallible_iterator::FallibleIterator;
 use std::path::Path;
 use regex::Regex;
 use rusqlite::Connection;
+use rusqlite::functions::Context as SQLContext;
 use rusqlite::functions::FunctionFlags;
 use rusqlite::NO_PARAMS;
 use rusqlite::Result as SQLResult;
@@ -151,6 +152,47 @@ impl NickData {
         Ok(())
     }
     
+    /// This is used internally the SQL regular expression custom functions.
+    /// # Arguments
+    /// * `ctx`         - The SQL context which provides the paramters to the 
+    ///                   function.
+    /// * `expr_cache`  - The map that holds the previously compiled regular
+    ///                   expressions.
+    /// # Returns
+    /// * The resulting (sub)string that was found in the SQL function 
+    ///   invocation parameter for the target string.
+    ///
+    fn regex_internal(ctx        : &SQLContext,
+                      expr_cache : &Arc<Mutex<RegexMap>>
+                     ) -> SQLResult<String> 
+    {
+        use rusqlite::Error as SQLError;
+
+        let expr_cache = &mut *expr_cache.lock().unwrap();
+        let expr_text  = ctx.get_raw(0).as_str()
+                                       .map_err(|e| 
+                                            SQLError::UserFunctionError(
+                                                e.into()))?;
+        let targ_text  = ctx.get_raw(1).as_str()
+                                       .map_err(|e| 
+                                            SQLError::UserFunctionError(
+                                                e.into()))?;
+        
+        let expr = match expr_cache.get(expr_text) {
+            Some(expr) => expr.clone(),
+            None => {
+                expr_cache.insert(
+                    expr_text.to_string(),
+                    Arc::new(Regex::new(expr_text)
+                             .map_err(|e| 
+                                  SQLError::UserFunctionError(
+                                        e.into()))?));
+                expr_cache.get(expr_text).unwrap().clone()
+            }
+        }; 
+        Ok(expr.find(targ_text).map_or("", |m| m.as_str()).to_string())    
+    }
+
     /// Adds a `REGEX_FIND` function to the SQL database, for use in queries.
     /// Expressions are cached, and SQLite also uses a form of LRU cache so
     /// the function doesn't need to be reexecuted if given params SQLite 
@@ -161,41 +203,13 @@ impl NickData {
                                conn : &Connection
                               ) -> Result<(), TrackerError> 
     {
-        // TODO - The function body of this is nearly identical to the other
-        //        SQL function registering function exept for the return type.
-        //        I could DRY this out with a macro, but that solution seems
-        //        uglier than the problem. Unless I can find a more elegant
-        //        way of implementing this, I'm leaving it as is for now.
-        use rusqlite::Error as SQLError;
         let expr_cache = self.expr_cache.clone();
         conn.create_scalar_function(
             "REGEX_FIND",
             2,
             FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
             move |ctx| {
-                let expr_cache = &mut *expr_cache.lock().unwrap();
-                let expr_text  = ctx.get_raw(0).as_str()
-                                               .map_err(|e| 
-                                                    SQLError::UserFunctionError(
-                                                        e.into()))?;
-                let targ_text  = ctx.get_raw(1).as_str()
-                                               .map_err(|e| 
-                                                    SQLError::UserFunctionError(
-                                                        e.into()))?;
-                
-                let expr = match expr_cache.get(expr_text) {
-                    Some(expr) => expr.clone(),
-                    None => {
-                        expr_cache.insert(
-                            expr_text.to_string(),
-                            Arc::new(Regex::new(expr_text)
-                                     .map_err(|e| 
-                                          SQLError::UserFunctionError(
-                                                e.into()))?));
-                        expr_cache.get(expr_text).unwrap().clone()
-                    }
-                }; 
-                Ok(expr.find(targ_text).map_or("", |m| m.as_str()).to_string())
+                NickData::regex_internal(ctx, &expr_cache)
             })?;
         Ok(())
     }
@@ -211,36 +225,14 @@ impl NickData {
                                 conn : &Connection,
                                ) -> Result<(), TrackerError> 
     {
-        use rusqlite::Error as SQLError;
         let expr_cache = self.expr_cache.clone();
         conn.create_scalar_function(
             "REGEX_MATCH",
             2,
             FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
             move |ctx| {
-                let expr_cache = &mut *expr_cache.lock().unwrap();
-                let expr_text  = ctx.get_raw(0).as_str()
-                                               .map_err(|e| 
-                                                    SQLError::UserFunctionError(
-                                                        e.into()))?;
-                let targ_text  = ctx.get_raw(1).as_str()
-                                               .map_err(|e| 
-                                                    SQLError::UserFunctionError(
-                                                        e.into()))?;
-                
-                let expr = match expr_cache.get(expr_text) {
-                    Some(expr) => expr.clone(),
-                    None => {
-                        expr_cache.insert(
-                            expr_text.to_string(),
-                            Arc::new(Regex::new(expr_text)
-                                     .map_err(|e| 
-                                          SQLError::UserFunctionError(
-                                                e.into()))?));
-                        expr_cache.get(expr_text).unwrap().clone()
-                    }
-                };
-                Ok(expr.is_match(targ_text))
+                NickData::regex_internal(ctx, &expr_cache)
+                          .map(|s| !s.is_empty())
             })?;
         Ok(())
     }
