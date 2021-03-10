@@ -5,7 +5,6 @@
 //! 
 
 use fallible_iterator::FallibleIterator;
-use std::path::Path;
 use regex::Regex;
 use rusqlite::Connection;
 use rusqlite::functions::Context as SQLContext;
@@ -13,6 +12,7 @@ use rusqlite::functions::FunctionFlags;
 use rusqlite::NO_PARAMS;
 use rusqlite::Result as SQLResult;
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -44,6 +44,7 @@ struct NickData {
     hc         : &'static Hexchat,
     path       : String,
     trunc_expr : Regex,
+    guest_expr : Regex,
     expr_cache : Arc<Mutex<RegexMap>>,
 }
 
@@ -61,6 +62,7 @@ impl NickData {
                 hc,
                 path, 
                 trunc_expr : Regex::new(r"[0-9_\-|]{0,3}$").unwrap(),
+                guest_expr : Regex::new(r"^[Gg]uest\d+$").unwrap(),
                 expr_cache : Arc::new(Mutex::new(HashMap::new())),
             }
         } else {
@@ -423,7 +425,7 @@ impl NickData {
         let nick_expr = {
             // Form the regular expression that'll be used to scan through
             // the database.
-            if !nick.to_lowercase().contains("guest") {
+            if !self.guest_expr.is_match(nick) {
                 let mut nick_expr  = String::new();
                 let     nick_trunc = self.trunc_expr.replace(nick, "")
                                                     .to_string();
@@ -442,7 +444,7 @@ impl NickData {
                 }
                 nick_expr
             } else {
-                escape(nick)
+                "^#$".to_string()
             }
         };
 
@@ -481,14 +483,15 @@ impl NickData {
         let mut statement = conn.prepare(
             r" SELECT DISTINCT nick, host, account, address
                FROM    users
-               WHERE  (nick    IN  (SELECT DISTINCT nick FROM temp_table1)
-                   OR  host    IN  (SELECT DISTINCT host FROM temp_table1)
+               WHERE  ((NOT REGEX_MATCH('^[Gg]uest\d+$', nick))
+                       AND nick IN  (SELECT DISTINCT nick FROM temp_table1)
+                   OR  host     IN  (SELECT DISTINCT host FROM temp_table1)
                    OR  (account<>'' AND account
-                               IN  (SELECT DISTINCT account 
-                                                         FROM temp_table1))
+                                IN  (SELECT DISTINCT account 
+                                                          FROM temp_table1))
                    OR  (address<>'' AND address 
-                               IN  (SELECT DISTINCT address  
-                                                         FROM temp_table1))
+                                IN  (SELECT DISTINCT address  
+                                                          FROM temp_table1))
                       )
                AND network LIKE ? ESCAPE '\'
                ORDER BY datetime_seen DESC
