@@ -405,6 +405,8 @@ impl NickData {
                       network   : &str
                      ) -> Result<Vec<[String;4]>, TrackerError>
     {
+        use regex::escape;
+        
         let conn = Connection::open(&self.path)?;
         conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
 
@@ -412,26 +414,37 @@ impl NickData {
             // Form the regular expression that'll be used to scan through
             // the database.
             if !nick.to_lowercase().contains("guest") {
-                let mut nick_exp = self.trunc_expr.replace(nick, "")
-                                                  .to_string();
-                if nick_exp.len() < 4 {
-                    nick_exp.clear();
-                    nick_exp.push_str("^_*");
+                let mut nick_expr  = String::new();
+                let     nick_trunc = self.trunc_expr.replace(nick, "")
+                                                    .to_string();
+                if nick_trunc.len() < 4 {
+                    nick_expr.push_str("^_*");
                     if nick.len() > 4 {
-                        nick_exp.push_str(&nick[0..4]);
+                        nick_expr.push_str(&escape(&nick[0..4]));
                     } else {
-                        nick_exp.push_str(nick);
+                        nick_expr.push_str(&escape(nick));
                     }
-                    nick_exp.push_str(r"[0-9_\-|]{0,6}$");
+                    nick_expr.push_str(r"[0-9_\-|]{0,6}$");
                 } else {
-                    nick_exp.insert_str(0, "^_*");
-                    nick_exp.push_str(r"[0-9_\-|]{0,3}$");
+                    nick_expr.push_str("^_*");
+                    nick_expr.push_str(&escape(&nick_trunc));
+                    nick_expr.push_str(r"[0-9_\-|]{0,3}$");
                 }
-                nick_exp
+                nick_expr
             } else {
-                nick.to_string()
+                escape(nick)
             }
         };
+
+        let mut account_esc = String::new();                                      
+
+        for ch in account.chars() {
+            match ch {
+                '_' => account_esc.push_str(r"\_"),
+                '%' => account_esc.push_str(r"\%"),
+                _   => account_esc.push(ch),
+            }
+        }
 
         // Add regular expression functions to the SQLite database.
         self.add_regex_find_function(&conn)?;
@@ -451,13 +464,13 @@ impl NickData {
                    OR  host LIKE ?
                    OR  (REGEX_FIND(?, ?)<>'' 
                         AND REGEX_FIND(?, ?)=REGEX_FIND(?, host))
-                   OR  (account<>'' AND account LIKE ?)
+                   OR  (account<>'' AND account LIKE ? ESCAPE '\')
                    OR  (address<>'' AND address=?))
                AND (network LIKE ? OR network LIKE 'elitebnc')
             ", &[&nick_expr, host, 
                  obfuscated_ip_expr, host, 
                  obfuscated_ip_expr, host, obfuscated_ip_expr, 
-                 account, address, network])?;
+                 &account_esc, address, network])?;
             
         // Query again using additional field values gathered from first 
         // query.
