@@ -270,6 +270,8 @@ impl NickData {
             let mut rec_added = false;
             let     conn      = Connection::open(&self.path)?;
             
+            let network_esc = sql_escape(network);
+            
             conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
             
             let mut statement = conn.prepare(
@@ -279,11 +281,11 @@ impl NickData {
                      AND   host    = ?
                      AND   account = ?
                      AND   address = ?
-                     AND   network  LIKE ?
+                     AND   network  LIKE ? ESCAPE '\'
                    LIMIT 1
                 ")?;
             let mut rows = statement.query(&[nick,    channel, host, 
-                                             account, address, network])?;
+                                             account, address, &network_esc])?;
             let found = {
                 match rows.next() {
                     Ok(opt) => opt.is_some(),
@@ -300,8 +302,8 @@ impl NickData {
                          AND   host    = ?
                          AND   account = ?
                          AND   address = ?
-                         AND   network  LIKE ?
-                    ", &[nick, channel, host, account, address, network])?;
+                         AND   network  LIKE ? ESCAPE '\'
+                    ", &[nick, channel, host, account, address, &network_esc])?;
             } else {
                 // Record wasn'tthere to update; add a new one.
                 conn.execute(
@@ -436,15 +438,9 @@ impl NickData {
             }
         };
 
-        let mut account_esc = String::new();                                      
-
-        for ch in account.chars() {
-            match ch {
-                '_' => account_esc.push_str(r"\_"),
-                '%' => account_esc.push_str(r"\%"),
-                _   => account_esc.push(ch),
-            }
-        }
+        let network_esc = sql_escape(network);
+        let account_esc = sql_escape(account);
+        let host_esc    = sql_escape(host);
 
         // Add regular expression functions to the SQLite database.
         self.add_regex_find_function(&conn)?;
@@ -461,16 +457,16 @@ impl NickData {
                SELECT  DISTINCT *
                FROM    users
                WHERE  (REGEX_MATCH(?, nick)
-                   OR  host LIKE ?
+                   OR  host LIKE ? ESCAPE '\'
                    OR  (REGEX_FIND(?, ?)<>'' 
                         AND REGEX_FIND(?, ?)=REGEX_FIND(?, host))
                    OR  (account<>'' AND account LIKE ? ESCAPE '\')
                    OR  (address<>'' AND address=?))
-               AND (network LIKE ? OR network LIKE 'elitebnc')
-            ", &[&nick_expr, host, 
+               AND (network LIKE ? ESCAPE '\' OR network LIKE 'elitebnc')
+            ", &[&nick_expr, &host_esc, 
                  obfuscated_ip_expr, host, 
                  obfuscated_ip_expr, host, obfuscated_ip_expr, 
-                 &account_esc, address, network])?;
+                 &account_esc, address, &network_esc])?;
             
         // Query again using additional field values gathered from first 
         // query.
@@ -486,12 +482,12 @@ impl NickData {
                                IN  (SELECT DISTINCT address  
                                                          FROM temp_table1))
                       )
-               AND (network LIKE ? OR
+               AND (network LIKE ? ESCAPE '\' OR
                     network LIKE 'elitebnc')
                ORDER BY datetime_seen DESC
             ")?;
         
-        let rows = statement.query(&[network])?;
+        let rows = statement.query(&[&network_esc])?;
         
         let vrows: Vec<[String;4]> = rows.map(|r| Ok([r.get(0)?, r.get(1)?,
                                                       r.get(2)?, r.get(3)?]
@@ -554,4 +550,17 @@ impl NickData {
     }
 }
     
+fn sql_escape(s: &str) -> String {
+    let mut es = String::new();
+    for ch in s.chars() {
+        match ch {
+            '_' => es.push_str(r"\_"),
+            '%' => es.push_str(r"\%"),
+            _   => es.push(ch),
+        }
+    }
+    es
+}
+
+
 
