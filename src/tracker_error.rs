@@ -22,6 +22,7 @@ pub enum TrackerError {
     ListError       (Box<dyn error::Error>),
     RegexError      (Box<dyn error::Error>),
     WebError        (Box<dyn error::Error>),
+    ConnectionError (String),
     IPLookupError   (String),
     JsonFmtError    (String),
     NoneError       (String),
@@ -71,6 +72,7 @@ impl fmt::Display for TrackerError {
             RegexError      (err) |
             ListError       (err) |
             WebError        (err) => write!(f, "Tracker Error: {}", &**err),
+            ConnectionError (msg) => write!(f, "Connection Error: {}", msg),
             JsonFmtError    (msg) => write!(f, "Tracker Error: {}", msg),
             IPLookupError   (msg) => write!(f, "IP Lookup Error: {}", msg),
             NoneError       (msg) => write!(f, "None Error: {}", msg),

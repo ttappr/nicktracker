@@ -320,6 +320,14 @@ impl NickTracker {
                          address, 
                          network] = me.get_user_info_ts(&user, &cx)?;
                          
+                    if host.is_empty() {
+                        return Err(
+                            TrackerError::ConnectionError(
+                                "Empty host string received. \
+                                 This can indicate a lost connection."
+                                .to_string()));
+                    }
+                         
                     if me.nick_data.update(&nick,    &channel, &host,
                                            &account, &address, &network)
                     {

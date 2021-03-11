@@ -78,9 +78,10 @@ impl NickData {
         let mut es = String::new();
         for ch in s.chars() {
             match ch {
-                '_' => es.push_str(r"\_"),
-                '%' => es.push_str(r"\%"),
-                _   => es.push(ch),
+                '_'  => es.push_str(r"\_"),
+                '%'  => es.push_str(r"\%"),
+                '\\' => es.push_str(r"\\"),
+                _    => es.push(ch),
             }
         }
         es
@@ -444,6 +445,8 @@ impl NickData {
                 }
                 nick_expr
             } else {
+                // There should be no matches for this. We don't want to match
+                // based on temporary user names.
                 "^#$".to_string()
             }
         };
@@ -487,10 +490,10 @@ impl NickData {
                        AND nick IN  (SELECT DISTINCT nick FROM temp_table1)
                    OR  host     IN  (SELECT DISTINCT host FROM temp_table1)
                    OR  (account<>'' AND account
-                                IN  (SELECT DISTINCT account 
+                                IN  (SELECT DISTINCT account
                                                           FROM temp_table1))
-                   OR  (address<>'' AND address 
-                                IN  (SELECT DISTINCT address  
+                   OR (address<>'' AND address
+                                IN  (SELECT DISTINCT address
                                                           FROM temp_table1))
                       )
                AND network LIKE ? ESCAPE '\'
