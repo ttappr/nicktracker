@@ -38,6 +38,8 @@ const SERVER_TIMEOUT : u64   = 5;
 
 const MAX_QUEUED_TASKS : usize = 10;
 
+const NO_HOST_TOLERANCE : i32 = 5;
+
 /// Channel data, a tuple of two strings. The first represeting the name of the
 /// network, and the second is the name of the channel.
 ///
@@ -306,7 +308,8 @@ impl NickTracker {
         thread_task(move || {
             #[allow(clippy::single_match)]
             match || -> Result<(), TrackerError> {
-
+                let mut no_host_count = 0;
+                
                 cx.print("🤔\t\x0311DBUPDATE:")?;
             
                 let mut count = 0;
@@ -321,11 +324,16 @@ impl NickTracker {
                          network] = me.get_user_info_ts(&user, &cx)?;
                          
                     if host.is_empty() {
-                        return Err(
-                            TrackerError::ConnectionError(
-                                "Empty host string received. \
-                                 This can indicate a lost connection."
-                                .to_string()));
+                        if no_host_count < NO_HOST_TOLERANCE {
+                           no_host_count += 1;
+                           continue;
+                        } else {
+                            return Err(
+                                TrackerError::ConnectionError(
+                                    "Empty host string received. \
+                                     This can indicate a lost connection."
+                                    .to_string()));
+                        }
                     }
                          
                     if me.nick_data.update(&nick,    &channel, &host,
