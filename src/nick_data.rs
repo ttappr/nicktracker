@@ -31,6 +31,9 @@ const DB_BUSY_TIMEOUT: u64 = 5; // Seconds.
 ///
 const MAX_ROWS_PRINT : usize = 15;
 
+const TRUNC_EXPR : &str = r"[0-9_\-|]{0,3}$";
+const GUEST_EXPR : &str = r"^(?:[Gg]uest_?\d*|[Kk]iwi_?\d*)$";
+
 // The type for the map that caches `Regex`s used in queries.
 //
 type RegexMap = HashMap<String, Arc<Regex>>;
@@ -61,8 +64,8 @@ impl NickData {
             NickData { 
                 hc,
                 path, 
-                trunc_expr : Regex::new(r"[0-9_\-|]{0,3}$").unwrap(),
-                guest_expr : Regex::new(r"^[Gg]uest\d+$").unwrap(),
+                trunc_expr : Regex::new(TRUNC_EXPR).unwrap(),
+                guest_expr : Regex::new(GUEST_EXPR).unwrap(),
                 expr_cache : Arc::new(Mutex::new(HashMap::new())),
             }
         } else {
@@ -486,7 +489,7 @@ impl NickData {
         let mut statement = conn.prepare(
             r" SELECT DISTINCT nick, host, account, address
                FROM    users
-               WHERE  ((NOT REGEX_MATCH('^[Gg]uest\d+$', nick))
+               WHERE  ((NOT REGEX_MATCH(?, nick))
                        AND nick IN  (SELECT DISTINCT nick FROM temp_table1)
                    OR  host     IN  (SELECT DISTINCT host FROM temp_table1)
                    OR  (account<>'' AND account
@@ -500,7 +503,7 @@ impl NickData {
                ORDER BY datetime_seen DESC
             ")?;
         
-        let rows = statement.query(&[&network_esc])?;
+        let rows = statement.query(&[GUEST_EXPR, &network_esc])?;
         
         let vrows: Vec<[String;4]> = rows.map(|r| Ok([r.get(0)?, r.get(1)?,
                                                       r.get(2)?, r.get(3)?]
