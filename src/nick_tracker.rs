@@ -485,11 +485,14 @@ impl NickTracker {
     pub (crate)
     fn on_user_quit(&self, _word: &[String]) -> Eat
     {
+        /*
         if !self.is_active() {
             Eat::None
         } else {
             Eat::All
         }
+        */
+        Eat::None
     }
     
     /// Implements the handler for the `Change Nick` text event. The user's
@@ -542,7 +545,7 @@ impl NickTracker {
                     _ => {},
                 }
             });
-            Eat::All
+            Eat::None
         }
     }
 

@@ -293,7 +293,7 @@ impl NickData {
             let     conn      = Connection::open(&self.path)?;
             let     obfip     = self.obfip_expr.find(host)
                                     .map_or("", |m| m.as_str()).to_string();
-            let network_esc = NickData::sql_escape(network);
+            let network_esc   = NickData::sql_escape(network);
             
             conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
             
@@ -314,7 +314,7 @@ impl NickData {
                     Ok(opt) => opt.is_some(),
                     Err(_) => false,
                 }
-             };
+            };
             if found {
                 // Record exists, update it's datetime_seen field.
                 conn.execute(
