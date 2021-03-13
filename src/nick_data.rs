@@ -31,8 +31,14 @@ const DB_BUSY_TIMEOUT: u64 = 5; // Seconds.
 ///
 const MAX_ROWS_PRINT : usize = 15;
 
+// Used to truncate nicks with numbers at the end.
 const TRUNC_EXPR : &str = r"[0-9_\-|]{0,3}$";
+
+// Used to detect generic Guest login nicks.
 const GUEST_EXPR : &str = r"^(?:[Gg]uest_?\d*|[Kk]iwi_?\d*)$";
+
+// Used to grab the obfuscated IP from host strings.
+const OBFIP_EXPR : &str = r"irc-(?:[\w]+\.){3,4}IP$";
 
 // The type for the map that caches `Regex`s used in queries.
 //
@@ -48,6 +54,7 @@ struct NickData {
     path       : String,
     trunc_expr : Regex,
     guest_expr : Regex,
+    obfip_expr : Regex,
     expr_cache : Arc<Mutex<RegexMap>>,
 }
 
@@ -59,15 +66,16 @@ impl NickData {
     pub (crate)
     fn new(hc: &'static Hexchat) -> Self {
         if let Some(path) = Self::check_database(hc) {
-            //let conn = Connection::open(&path).unwrap();
-            //NickData::add_regexp_function(&conn).unwrap();
-            NickData { 
+            let nd = NickData { 
                 hc,
                 path, 
                 trunc_expr : Regex::new(TRUNC_EXPR).unwrap(),
                 guest_expr : Regex::new(GUEST_EXPR).unwrap(),
+                obfip_expr : Regex::new(OBFIP_EXPR).unwrap(),
                 expr_cache : Arc::new(Mutex::new(HashMap::new())),
-            }
+            };
+            nd.update_user_table().expect("Unable to update database.");
+            nd
         } else {
             panic!("Unable to create new database for Nick Tracker.");
         }
@@ -122,7 +130,7 @@ impl NickData {
                 if !address.is_empty() {
                     if let Ok(addr_info) = tracker.get_ip_addr_info(address) {
                         let [ip,  city, region, country,
-                             isp, _lat,  _lon,    _link  ] = addr_info;
+                             isp, _lat, _lon,   _link    ] = addr_info;
                         msg = {
                             if ip.len() > IPV4_LEN {
                                 format!("\x0309\x02{:-16}\x0F \
@@ -283,7 +291,8 @@ impl NickData {
         match || -> SQLResult<bool> {
             let mut rec_added = false;
             let     conn      = Connection::open(&self.path)?;
-            
+            let     obfip     = self.obfip_expr.find(host)
+                                    .map_or("", |m| m.as_str()).to_string();
             let network_esc = NickData::sql_escape(network);
             
             conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
@@ -322,8 +331,9 @@ impl NickData {
                 // Record wasn'tthere to update; add a new one.
                 conn.execute(
                     r" INSERT INTO users 
-                       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-                    ", &[nick, channel, host, account, address, network])?;
+                       VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)
+                    ", &[nick,    channel, host, 
+                         account, address, network, &obfip])?;
                     rec_added = true;
             }
             Ok(rec_added)
@@ -462,9 +472,9 @@ impl NickData {
         self.add_regex_find_function(&conn)?;
         self.add_regex_match_function(&conn)?;
 
-        // This matches the format for obfuscated IP's on networks like
-        // snoonet.
-        let obfuscated_ip_expr = r"irc-(?:[\w]+\.){3,4}IP$";
+        let obfuscated_ip = self.obfip_expr.find(host)
+                                           .map_or("", |m| m.as_str())
+                                           .to_string();
 
         // Create a temporary table to facilitate the query.
         conn.execute(r"DROP TABLE IF EXISTS temp_table1", NO_PARAMS)?;
@@ -474,15 +484,16 @@ impl NickData {
                FROM    users
                WHERE  (REGEX_MATCH(?, nick)
                    OR  host LIKE ? ESCAPE '\'
-                   OR  (REGEX_FIND(?, ?)<>'' 
-                        AND REGEX_FIND(?, ?)=REGEX_FIND(?, host))
+                   OR  (obfuscated_ip<>'' AND obfuscated_ip=?)
                    OR  (account<>'' AND account LIKE ? ESCAPE '\')
                    OR  (address<>'' AND address=?))
                AND network LIKE ? ESCAPE '\'
-            ", &[&nick_expr, &host_esc, 
-                 obfuscated_ip_expr, host, 
-                 obfuscated_ip_expr, host, obfuscated_ip_expr, 
-                 &account_esc, address, &network_esc])?;
+            ", &[&nick_expr, 
+                 &host_esc, 
+                 &obfuscated_ip,
+                 &account_esc, 
+                 address, 
+                 &network_esc])?;
             
         // Query again using additional field values gathered from first 
         // query.
@@ -497,6 +508,9 @@ impl NickData {
                                                           FROM temp_table1))
                    OR (address<>'' AND address
                                 IN  (SELECT DISTINCT address
+                                                          FROM temp_table1))
+                   OR (obfuscated_ip<>'' AND obfuscated_ip
+                                IN  (SELECT DISTINCT obfuscated_ip
                                                           FROM temp_table1))
                       )
                AND network LIKE ? ESCAPE '\'
@@ -563,6 +577,39 @@ impl NickData {
             }
         }
         Some(db_path_string)
+    }
+    
+    /// Any late modifications to the database are contained in this function.
+    /// This function ensures that the tables and data in the database are kept
+    /// current so users don't have to delete their current database and start
+    /// a new one if the schema changes at all.
+    ///
+    fn update_user_table(&self) -> Result<(), TrackerError>
+    {
+        let conn = Connection::open(&self.path)?;
+ 
+        self.add_regex_find_function(&conn)?;
+        self.add_regex_match_function(&conn)?;
+
+        // Extract the column names of the 'users' table. 
+        let mut stmt = conn.prepare(r"PRAGMA table_info(users)")?;
+        let     rows = stmt.query(NO_PARAMS)?;
+        let     cols = rows.map(|r| Ok(r.get(1)?)).collect::<Vec<String>>()?;
+        
+        if !cols.contains(&"obfuscated_ip".to_string()) {
+            self.hc.print("Updating user table of database.");
+            
+            // 'obfuscated_ip' not found in table, update table.
+            conn.execute(
+                    r" ALTER TABLE users ADD COLUMN obfuscated_ip
+                     ", NO_PARAMS)?;
+            conn.execute(
+                    r" UPDATE users
+                       SET obfuscated_ip=REGEX_FIND(?, host)
+                       WHERE REGEX_MATCH(?, host)
+                     ", &[OBFIP_EXPR, OBFIP_EXPR])?;
+        }
+        Ok(())
     }
 }
 
