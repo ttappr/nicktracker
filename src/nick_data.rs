@@ -587,9 +587,6 @@ impl NickData {
     fn update_user_table(&self) -> Result<(), TrackerError>
     {
         let conn = Connection::open(&self.path)?;
- 
-        self.add_regex_find_function(&conn)?;
-        self.add_regex_match_function(&conn)?;
 
         // Extract the column names of the 'users' table. 
         let mut stmt = conn.prepare(r"PRAGMA table_info(users)")?;
@@ -597,6 +594,9 @@ impl NickData {
         let     cols = rows.map(|r| Ok(r.get(1)?)).collect::<Vec<String>>()?;
         
         if !cols.contains(&"obfuscated_ip".to_string()) {
+            self.add_regex_find_function(&conn)?;
+            self.add_regex_match_function(&conn)?;
+            
             self.hc.print("Updating user table of database.");
             
             // 'obfuscated_ip' not found in table, update table.
