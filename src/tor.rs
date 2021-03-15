@@ -17,6 +17,7 @@ use crate::tracker_error::*;
 
 use hexchat_api::Context;
 use hexchat_api::ContextError;
+use hexchat_api::FieldValue;
 use hexchat_api::ThreadSafeContext;
 use hexchat_api::ThreadSafeListIterator;
 use hexchat_api::ThreadSafeFieldValue;
@@ -200,6 +201,19 @@ impl Tor for Result<Option<ThreadSafeListIterator>, ContextError> {
                 }
             },
             Err(err) => Err(TrackerError::from(err.clone())),
+        }
+    }
+}
+
+impl Tor for Option<&FieldValue> {
+    type Target = String;
+    fn tor(&self) -> Result<Self::Target, TrackerError>
+    {
+        match self {
+            Some(fv) => Ok(fv.to_string()),
+            None => Err(
+                TrackerError::NoneError("Field value unavailable."
+                                        .to_string())),
         }
     }
 }

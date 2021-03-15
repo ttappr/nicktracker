@@ -11,6 +11,19 @@ use Priority::*;
 
 use crate::nick_tracker::*;
 
+const DBTOGGLE_HELP : &str = "/DBTOGGLE [ALL [ON|OFF]] \
+                              Toggles nick tracking on/off for the current \
+                              channel. If ALL is given alone, it toggles the \
+                              state of each channel. If ON is given it \
+                              activates all inactive channels - if OFF is \
+                              given it deactivates all active channels.";
+const IPLOOKUP_HELP : &str = "/IPLOOKUP <ip> Prints the geolocation for the \
+                              IP.";
+const DBWHO_HELP    : &str = "/DBWHO <user> Lists the nicknames for the given \
+                              user.";
+const DBUPDATE_HELP : &str = "/DBUPDATE Updates the nick database with user \
+                              data for all users in the channel.";
+
 pub (crate) static mut THREAD_POOL: Option<ThreadPool> = None;
 
 // Register the entry points of the plugin.
@@ -102,19 +115,6 @@ pub (crate) fn num_queued_tasks() -> usize {
         }
     }
 }
-
-const DBTOGGLE_HELP : &str = "/DBTOGGLE [ALL [ON|OFF]] \
-                              Toggles nick tracking on/off for the current \
-                              channel. If ALL is given alone, it toggles the \
-                              state of each channel. If ON is given it \
-                              activates all inactive channels - if OFF is \
-                              given it deactivates all active channels.";
-const IPLOOKUP_HELP : &str = "/IPLOOKUP <ip> Prints the geolocation for the \
-                              IP.";
-const DBWHO_HELP    : &str = "/DBWHO <user> Lists the nicknames for the given \
-                              user.";
-const DBUPDATE_HELP : &str = "/DBUPDATE Updates the nick database with user \
-                              data for all users in the channel.";
         
 /// Callback wrapper. Forwards the 'Join' text event to `NickTracker` for 
 /// handling. 

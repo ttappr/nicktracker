@@ -25,8 +25,6 @@ const IPV6_EXPR      : &str  =  "(?:[0-9a-fA-F]+:){7}[0-9a-fA-F]+|\
                                  (?:[0-9a-fA-F]+-){7}[0-9a-fA-F]+";
 const IPV4_EXPR      : &str  = r"\d+\.\d+\.\d+\.\d+|\d+-\d+-\d+-\d+";
 
-const IP_OBFUSC_EXPR : &str  = r"irc-(?:[\w.]+\.){4}IP$";
-
 // Expression used in re.sub() calls below to delimit the IP address.
 // Matches (non)standard delimiters and leading 0's in address parts.
 // r"(?:^|\.|-|:)0*(?!\.|-|:|$)" won't work because Rust regex doesn't have
@@ -55,7 +53,6 @@ struct NickTracker {
     ipv6_expr   : Regex,
     ipv4_expr   : Regex,
     dlim_expr   : Regex,
-    ipob_expr   : Regex,
     chan_set    : HashSet::<ChanData>,
     nick_data   : NickData,
     http_agent  : Agent,
@@ -73,7 +70,6 @@ impl NickTracker {
             ipv6_expr   : Regex::new(IPV6_EXPR).unwrap(),
             ipv4_expr   : Regex::new(IPV4_EXPR).unwrap(),
             dlim_expr   : Regex::new(DLIM_EXPR).unwrap(),
-            ipob_expr   : Regex::new(IP_OBFUSC_EXPR).unwrap(),
             chan_set    : HashSet::<ChanData>::new(),
             nick_data   : NickData::new(hc),
             http_agent  : AgentBuilder::new()
@@ -313,7 +309,8 @@ impl NickTracker {
                 cx.print("🤔\t\x0311DBUPDATE:")?;
             
                 let mut count = 0;
-                let user_list = cx.list_get("users").tor()?;
+                let user_list = cx.list_get("users").tor()?.to_vec();
+                let dbconn    = me.nick_data.get_dbconnection();
 
                 for user in &user_list {
                     let [nick, 
@@ -321,7 +318,7 @@ impl NickTracker {
                          host, 
                          account, 
                          address, 
-                         network] = me.get_user_info_ts(&user, &cx)?;
+                         network] = me.get_user_info_ts(user, &cx)?;
                          
                     if host.is_empty() {
                         if no_host_count < NO_HOST_TOLERANCE {
@@ -337,7 +334,8 @@ impl NickTracker {
                     }
                          
                     if me.nick_data.update(&nick,    &channel, &host,
-                                           &account, &address, &network)
+                                           &account, &address, &network, 
+                                           dbconn.as_ref())
                     {
                         cx.print(
                             &format!("\x0311+ new record added for user \
@@ -405,7 +403,8 @@ impl NickTracker {
                     if who_lc == nick.to_lowercase()    || 
                        who_lc == account.to_lowercase() 
                     {
-                        let info = me.get_user_info_ts(&user, &cx)?;
+                        let user_item = user.get_item();
+                        let info = me.get_user_info_ts(&user_item, &cx)?;
                         let [nick, _channel, 
                              host, account, 
                              address, network] = info;
@@ -471,7 +470,7 @@ impl NickTracker {
                                      nick), &cx);
             
             me.nick_data.update(&nick,    &channel, &host, 
-                                &account, &address, &network);
+                                &account, &address, &network, None);
                                 
             me.nick_data.print_related(&nick,    &host,    &account, 
                                        &address, &network, &me, &cx);
@@ -524,17 +523,19 @@ impl NickTracker {
                         let nick = user.get_field("nick").tor()?;
                         
                         if nick == old_nick || nick == new_nick {
+                            let user_item = user.get_item();
                             let [_nick, 
                                  channel, 
                                  host, 
                                  account, 
                                  address, 
-                                 network] = me.get_user_info_ts(&user, 
+                                 network] = me.get_user_info_ts(&user_item, 
                                                                 &cx)?;
                                  
                             me.nick_data.update(&new_nick, &channel, 
                                                 &host,     &account,  
-                                                &address,  &network);
+                                                &address,  &network, 
+                                                None);
                         }
                     }
                     Ok(())
@@ -551,42 +552,19 @@ impl NickTracker {
 
     /// A helper function to gather the Hexchat list field information for a 
     /// user. It constructs a slice containing the  'nick', 'account',
-    /// 'host', etc.
-    ///
-    #[allow(dead_code)]
-    fn get_user_info(&self,
-                     user    : &hexchat_api::ListIterator,
-                     context : &Context
-                    ) -> Result<[String;6], TrackerError> 
-    {
-        let host = user.get_field("host"   ) .tor()?;
-        
-        Ok([user    .get_field   ("nick"   ) .tor()?,
-            context .get_info    ("channel") .tor()?,
-            host    .clone(),
-            user    .get_field   ("account") .tor()?,
-            self    .normalize_ip_addr 
-                                 ( &host   ),
-            context .get_info    ("network") .tor()?
-           ])
-    }
-    
-    /// This is a thread-safe version of `get_user_info()`.
+    /// 'host', etc. This is a thread-safe function.
     ///
     fn get_user_info_ts(&self,
-                        user      : &ThreadSafeListIterator,
+                        user      : &ListItem,
                         context   : &ThreadSafeContext
                        ) -> Result<[String;6], TrackerError>
     {
-        let host = user.get_field("host"   ) .tor()?;
-        
-        Ok([user    .get_field   ("nick"   ) .tor()?,
-            context .get_info    ("channel") .tor()?,
-            host    .clone(),
-            user    .get_field   ("account") .tor()?,
-            self    .normalize_ip_addr 
-                                 ( &host   ),
-            context .get_info    ("network") .tor()?
+        Ok([user.get("nick").tor()?,
+            context.get_info("channel").tor()?,
+            user.get("host").tor()?,
+            user.get("account").tor()?,
+            self.normalize_ip_addr(&user["host"].to_string()),
+            context.get_info("network").tor()?
            ])
     }
     

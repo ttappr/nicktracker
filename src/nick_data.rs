@@ -97,6 +97,25 @@ impl NickData {
         }
         es
     }
+    /// Applies an expression to the `host` string and if there's an obfuscated
+    /// IP within it, it's returned; else an empty string is returned.
+    ///
+    fn find_obfuscated_ip(&self, host: &str) -> String {
+        self.obfip_expr.find(host).map_or("", |m| m.as_str()).to_string()
+    }
+    
+    /// Gets a connection to the database. This can be used to hold the 
+    /// connection open for any numer of calls to `self.update()`, rather than
+    /// letting the update function open the connection on each invokaction.
+    ///   
+    pub (crate)
+    fn get_dbconnection(&self) -> Option<Connection> {
+        if let Ok(conn) = Connection::open(&self.path) {
+            Some(conn)
+        } else {
+            None
+        }
+    }
 
     /// Prints the DB records related to the user info given in the paramters.
     /// # Arguments
@@ -285,15 +304,24 @@ impl NickData {
               host      : &str, 
               account   : &str, 
               address   : &str, 
-              network   : &str
+              network   : &str,
+              dbconn    : Option<&Connection>
              ) -> bool
     {
         match || -> SQLResult<bool> {
-            let mut rec_added = false;
-            let     conn      = Connection::open(&self.path)?;
-            let     obfip     = self.obfip_expr.find(host)
-                                    .map_or("", |m| m.as_str()).to_string();
-            let network_esc   = NickData::sql_escape(network);
+            let mut rec_added   = false;
+            let     network_esc = NickData::sql_escape(network);
+            let     obfip       = self.find_obfuscated_ip(host);
+            
+            let conn_local;
+            let conn =  {
+                if let Some(dbconn) = dbconn {
+                    dbconn
+                } else {
+                    conn_local = Connection::open(&self.path)?;
+                    &conn_local
+                }
+            };
             
             conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
             
@@ -472,9 +500,7 @@ impl NickData {
         self.add_regex_find_function(&conn)?;
         self.add_regex_match_function(&conn)?;
 
-        let obfuscated_ip = self.obfip_expr.find(host)
-                                           .map_or("", |m| m.as_str())
-                                           .to_string();
+        let obfuscated_ip = self.find_obfuscated_ip(host);
 
         // Create a temporary table to facilitate the query.
         conn.execute(r"DROP TABLE IF EXISTS temp_table1", NO_PARAMS)?;
