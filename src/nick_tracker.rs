@@ -21,22 +21,24 @@ use hexchat_api::*;
 use TrackerError::*;
 
 // Regular expressions used to find the IP in the host string.
-const IPV6_EXPR      : &str  =  "(?:[0-9a-fA-F]+:){7}[0-9a-fA-F]+|\
-                                 (?:[0-9a-fA-F]+-){7}[0-9a-fA-F]+";
-const IPV4_EXPR      : &str  = r"\d+\.\d+\.\d+\.\d+|\d+-\d+-\d+-\d+";
+const IPV6_EXPR : &str  =  "(?:[0-9a-fA-F]+:){7}[0-9a-fA-F]+|\
+                            (?:[0-9a-fA-F]+-){7}[0-9a-fA-F]+";
+const IPV4_EXPR : &str  = r"\d+\.\d+\.\d+\.\d+|\d+-\d+-\d+-\d+";
 
 // Expression used in re.sub() calls below to delimit the IP address.
 // Matches (non)standard delimiters and leading 0's in address parts.
-// r"(?:^|\.|-|:)0*(?!\.|-|:|$)" won't work because Rust regex doesn't have
-// lookahead. So I replaced the neg lookahead with a simple \B.
-const DLIM_EXPR      : &str  = r"(?:^|\.|-|:)0*\b";
+// `r"(?:^|\.|-|:)0*(?!\.|-|:|$)"` won't work because Rust regex doesn't have
+// lookahead. So I replaced the neg lookahead with a simple \b.
+const DLIM_EXPR : &str  = r"(?:^|\.|-|:)0*\b";
 
 // How long to wait for the IP geolaction server to respond.
-const SERVER_TIMEOUT : u64   = 5;
+const SERVER_TIMEOUT    : u64   =  5;
 
-const MAX_QUEUED_TASKS : usize = 10;
+// Max number of pending tasks in the threadpool queue.
+const MAX_QUEUED_TASKS  : usize = 10;
 
-const NO_HOST_TOLERANCE : i32 = 5;
+// How many "no host" responses during updates to allow before erroring out.
+const NO_HOST_TOLERANCE : i32   =  5;
 
 /// Channel data, a tuple of two strings. The first represeting the name of the
 /// network, and the second is the name of the channel.
@@ -161,25 +163,26 @@ impl NickTracker {
     {
         use FieldValue as FV;
         
-        if word.len() == 1 {
+        let word_lc = word.iter().map(|w| w.to_lowercase()).collect::<Vec<_>>();
+        
+        if word_lc.len() == 1 {
             // Simple case - just toggle the current channel.
             if self.is_active() {
                 self.deactivate();
             } else {
                 self.activate();
             }
-        } else if (word.len() > 1 && word[1].to_lowercase() == "all")
-                   && (word.len() == 2 || (word.len() == 3
-                        && ["on", "off"].contains(&word[2].to_lowercase()
-                                                          .as_str())))
+        } else if (word_lc.len() > 1 && word_lc[1] == "all")
+                   && (word_lc.len() == 2 || (word_lc.len() == 3
+                       && (word_lc[2] == "on" || word_lc[2] == "off")))
         {
             // This is some version of ALL [ON|OFF], where ON/OFF are optional.
             
             // `one_way == true` means flip *all* ON or OFF - don't just toggle.
             // If `one_way == false`, then each open channel is flipped the 
             // opposite of its current state individually.
-            let one_way = word.len() == 3;
-            let all_on  = one_way && word[2].to_lowercase().as_str() == "on";
+            let one_way = word_lc.len() == 3;
+            let all_on  = one_way && word_lc[2] == "on";
             
             if let Some(list) = ListIterator::new("channels") {
                 for item in list {

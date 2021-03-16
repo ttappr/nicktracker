@@ -386,7 +386,7 @@ impl NickData {
     /// * `lon`       - The longitide of the host.
     /// # Returns
     /// * `true` if the database was modified, `false` if not.
-    ////
+    ///
     #[allow(clippy::too_many_arguments)]
     pub (crate)
     fn update_ip_addr_info(&self,
