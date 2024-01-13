@@ -119,7 +119,7 @@ pub (crate) fn num_queued_tasks() -> usize {
 /// Callback wrapper. Forwards the 'Join' text event to `NickTracker` for 
 /// handling. 
 ///
-fn user_join(_hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
+fn user_join(_hc: &Hexchat, word: &[String], udata: &UserData) -> Eat
 {
     udata.apply_mut(|nt: &mut NickTracker| { nt.on_user_join(word) })
 }
@@ -127,7 +127,7 @@ fn user_join(_hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 /// Callback wrapper. Forwards 'Quit' text events on to `NickTracker` for
 /// handling.
 ///
-fn user_quit(_hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
+fn user_quit(_hc: &Hexchat, word: &[String], udata: &UserData) -> Eat
 {
     udata.apply(|nt: &NickTracker| { nt.on_user_quit(word) })
 }
@@ -135,7 +135,7 @@ fn user_quit(_hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 /// Callback wrapper. Forwards 'Change Nick' text events on to `NickTracker` for
 /// handling.
 ///
-fn change_nick(_hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
+fn change_nick(_hc: &Hexchat, word: &[String], udata: &UserData) -> Eat
 {
     udata.apply(|nt: &NickTracker| nt.on_user_change_nick(word))
 }
@@ -146,7 +146,7 @@ fn change_nick(_hc: &Hexchat, word: &[String], udata: &mut UserData) -> Eat
 fn dbtoggle(_hc      : &Hexchat,
             word     : &[String],
             word_eol : &[String],
-            udata    : &mut UserData
+            udata    : &UserData
            ) -> Eat
 {
     udata.apply_mut(|nt: &mut NickTracker| { 
@@ -160,7 +160,7 @@ fn dbtoggle(_hc      : &Hexchat,
 fn iplookup(_hc      : &Hexchat,
             word     : &[String],
             word_eol : &[String],
-            udata    : &mut UserData
+            udata    : &UserData
            ) -> Eat
 {
     udata.apply_mut(|nt: &mut NickTracker| { 
@@ -174,7 +174,7 @@ fn iplookup(_hc      : &Hexchat,
 fn dbupdate(_hc      : &Hexchat,
             word     : &[String],
             word_eol : &[String],
-            udata    : &mut UserData
+            udata    : &UserData
            ) -> Eat
 {
     udata.apply_mut(|nt: &mut NickTracker| { 
@@ -188,7 +188,7 @@ fn dbupdate(_hc      : &Hexchat,
 fn dbwho(_hc      : &Hexchat,
          word     : &[String],
          word_eol : &[String],
-         udata    : &mut UserData
+         udata    : &UserData
         ) -> Eat
 {
     udata.apply_mut(|nt: &mut NickTracker| {

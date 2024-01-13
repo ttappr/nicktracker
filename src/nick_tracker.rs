@@ -54,7 +54,7 @@ struct NickTracker {
     hc          : &'static Hexchat,
     ipv6_expr   : Regex,
     ipv4_expr   : Regex,
-    dlim_expr   : Regex,
+    _dlim_expr  : Regex,
     chan_set    : HashSet::<ChanData>,
     nick_data   : NickData,
     http_agent  : Agent,
@@ -71,7 +71,7 @@ impl NickTracker {
             hc,
             ipv6_expr   : Regex::new(IPV6_EXPR).unwrap(),
             ipv4_expr   : Regex::new(IPV4_EXPR).unwrap(),
-            dlim_expr   : Regex::new(DLIM_EXPR).unwrap(),
+            _dlim_expr  : Regex::new(DLIM_EXPR).unwrap(),
             chan_set    : HashSet::<ChanData>::new(),
             nick_data   : NickData::new(hc),
             http_agent  : AgentBuilder::new()
