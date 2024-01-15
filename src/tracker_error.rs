@@ -12,7 +12,7 @@ use TrackerError::*;
 /// The error type used exclusively throughout the application code, and all
 /// other errors can be converted to.
 ///
-#[allow(dead_code)]
+#[allow(dead_code, clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum TrackerError {
     ContextError    (Box<dyn error::Error>),

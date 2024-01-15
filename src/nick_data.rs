@@ -299,6 +299,7 @@ impl NickData {
     /// # Returns
     /// * `true` if the database was modified, `false` if not.
     ///
+    #[allow(clippy::too_many_arguments)]
     pub (crate)
     fn update(&self,
               nick      : &str, 
@@ -337,8 +338,8 @@ impl NickData {
                      AND   network  LIKE ? ESCAPE '\'
                    LIMIT 1
                 ")?;
-            let mut rows = statement.query(&[nick,    channel, host, 
-                                             account, address, &network_esc])?;
+            let mut rows = statement.query([nick,    channel, host, 
+                                            account, address, &network_esc])?;
             let found = {
                 match rows.next() {
                     Ok(opt) => opt.is_some(),
@@ -356,13 +357,13 @@ impl NickData {
                          AND   account = ?
                          AND   address = ?
                          AND   network  LIKE ? ESCAPE '\'
-                    ", &[nick, channel, host, account, address, &network_esc])?;
+                    ", [nick, channel, host, account, address, &network_esc])?;
             } else {
                 // Record wasn'tthere to update; add a new one.
                 conn.execute(
                     r" INSERT INTO users 
                        VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)
-                    ", &[nick,    channel, host, 
+                    ", [nick,    channel, host, 
                          account, address, network, &obfip])?;
                     rec_added = true;
             }
@@ -408,7 +409,7 @@ impl NickData {
             conn.execute(
                 r" INSERT INTO ip_addr_info
                    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-                ", &[ip, city, region, country, isp, lat, lon])?;
+                ", [ip, city, region, country, isp, lat, lon])?;
             Ok(())
         }().is_ok()
     }
@@ -433,9 +434,9 @@ impl NickData {
             r" SELECT * FROM ip_addr_info
                WHERE   ip = ?
                LIMIT 1
-            ", &[ip], |row| Ok([row.get(0)?, row.get(1)?, row.get(2)?,
-                                row.get(3)?, row.get(4)?, row.get(5)?,
-                                row.get(6)?, row.get(7)?]))?;
+            ", [ip], |row| Ok([row.get(0)?, row.get(1)?, row.get(2)?,
+                               row.get(3)?, row.get(4)?, row.get(5)?,
+                               row.get(6)?, row.get(7)?]))?;
         Ok(row)
     }
     
@@ -516,7 +517,7 @@ impl NickData {
                    OR  (account<>'' AND account LIKE ? ESCAPE '\')
                    OR  (address<>'' AND address=?))
                AND network LIKE ? ESCAPE '\'
-            ", &[&nick_expr, 
+            ",  [&nick_expr, 
                  &host_esc, 
                  &obfuscated_ip,
                  &account_esc, 
@@ -545,7 +546,7 @@ impl NickData {
                ORDER BY datetime_seen DESC
             ")?;
         
-        let rows = statement.query(&[GUEST_EXPR, &network_esc])?;
+        let rows = statement.query([GUEST_EXPR, &network_esc])?;
         
         let vrows: Vec<[String;4]> = rows.map(|r| Ok([r.get(0)?, r.get(1)?,
                                                       r.get(2)?, r.get(3)?]
@@ -619,7 +620,7 @@ impl NickData {
         // Extract the column names of the 'users' table. 
         let mut stmt = conn.prepare(r"PRAGMA table_info(users)")?;
         let     rows = stmt.query(NO_PARAMS)?;
-        let     cols = rows.map(|r| Ok(r.get(1)?)).collect::<Vec<String>>()?;
+        let     cols = rows.map(|r| r.get(1)).collect::<Vec<String>>()?;
         
         if !cols.contains(&"obfuscated_ip".to_string()) {
             self.add_regex_find_function(&conn)?;
@@ -635,7 +636,7 @@ impl NickData {
                     r" UPDATE users
                        SET obfuscated_ip=REGEX_FIND(?, host)
                        WHERE REGEX_MATCH(?, host)
-                     ", &[OBFIP_EXPR, OBFIP_EXPR])?;
+                     ", [OBFIP_EXPR, OBFIP_EXPR])?;
         }
         Ok(())
     }

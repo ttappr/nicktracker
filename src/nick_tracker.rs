@@ -596,7 +596,7 @@ impl NickTracker {
         
             let addr = m.as_str().to_lowercase();
             addr.split(|c: char| ".-:".contains(c))
-                .map(|s| u32::from_str_radix(s, 10).unwrap_or(0))
+                .map(|s| s.parse::<u32>().unwrap_or(0))
                 .map(|i| format!("{:?}", i))
                 .collect::<Vec<_>>()
                 .join(".")
