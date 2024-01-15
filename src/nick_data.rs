@@ -9,7 +9,6 @@ use regex::Regex;
 use rusqlite::Connection;
 use rusqlite::functions::Context as SQLContext;
 use rusqlite::functions::FunctionFlags;
-use rusqlite::NO_PARAMS;
 use rusqlite::Result as SQLResult;
 use std::collections::HashMap;
 use std::path::Path;
@@ -39,6 +38,9 @@ const GUEST_EXPR : &str = r"^(?:[Gg]uest_?\d*|[Kk]iwi_?\d*)$";
 
 // Used to grab the obfuscated IP from host strings.
 const OBFIP_EXPR : &str = r"irc-(?:[\w]+\.){3,4}IP$";
+
+// Used to pass no parameters to SQL functions.
+const NO_PARAMS: () = ();
 
 // The type for the map that caches `Regex`s used in queries.
 //
