@@ -158,8 +158,8 @@ impl NickTracker {
     pub (crate)
     fn on_cmd_dbtoggle(&mut self, 
                        word      : &[String], 
-                       _word_eol : &[String]
-                      ) -> Eat 
+                       _word_eol : &[String]) 
+        -> Eat 
     {
         use FieldValue as FV;
         
@@ -243,8 +243,8 @@ impl NickTracker {
     pub (crate)
     fn on_cmd_ip_lookup(&mut self, 
                         word      : &[String], 
-                        _word_eol : &[String]
-                       ) -> Eat  
+                        _word_eol : &[String]) 
+        -> Eat  
     {
         if word.len() != 2 {
             self.write("💡\t\x0311Usage: IPLOOKUP <IP>");
@@ -289,8 +289,8 @@ impl NickTracker {
     pub (crate)
     fn on_cmd_dbupdate(&mut self, 
                         word      : &[String], 
-                        _word_eol : &[String]
-                       ) -> Eat  
+                        _word_eol : &[String]) 
+        -> Eat  
     {
         if word.len() > 1 {
             self.write("💡\t\x0311Usage: DBUPDATE <takes no arguments>");
@@ -374,8 +374,8 @@ impl NickTracker {
     pub (crate)
     fn on_cmd_dbwho(&mut self,
                     word      : &[String],
-                    _word_eol : &[String]
-                   ) -> Eat
+                    _word_eol : &[String]) 
+        -> Eat
     {
         if word.len() != 2 {
             self.write("💡\t\x0311Usage: DBWHO <nick>");
@@ -444,8 +444,8 @@ impl NickTracker {
     ///
     pub (crate)
     fn on_user_join(&mut self, 
-                    word: &[String]
-                   ) -> Eat 
+                    word: &[String]) 
+        -> Eat 
     {
         if !self.is_active() {
             return Eat::None;
@@ -485,8 +485,7 @@ impl NickTracker {
     /// currently.
     ///
     pub (crate)
-    fn on_user_quit(&self, _word: &[String]) -> Eat
-    {
+    fn on_user_quit(&self, _word: &[String]) -> Eat {
         /*
         if !self.is_active() {
             Eat::None
@@ -502,8 +501,7 @@ impl NickTracker {
     /// other records in the database.
     ///
     pub (crate)
-    fn on_user_change_nick(&self, word: &[String]) -> Eat 
-    {
+    fn on_user_change_nick(&self, word: &[String]) -> Eat {
         if !self.is_active() {
             Eat::None
         } else {
@@ -559,8 +557,8 @@ impl NickTracker {
     ///
     fn get_user_info_ts(&self,
                         user      : &ListItem,
-                        context   : &ThreadSafeContext
-                       ) -> Result<[String;6], TrackerError>
+                        context   : &ThreadSafeContext) 
+        -> Result<[String;6], TrackerError>
     {
         Ok([user.get("nick").tor()?,
             context.get_info("channel").tor()?,
@@ -612,8 +610,8 @@ impl NickTracker {
     ///
     pub (crate)
     fn get_ip_addr_info(&self, 
-                        ip_addr: &str
-                       ) -> Result<[String;8], TrackerError> 
+                        ip_addr: &str) 
+        -> Result<[String;8], TrackerError> 
     {
         const LATITUDE_IDX   : usize = 5;
         const LONGITUDE_IDX  : usize = 6;
