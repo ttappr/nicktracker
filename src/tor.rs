@@ -18,6 +18,7 @@ use crate::tracker_error::*;
 use hexchat_api::Context;
 use hexchat_api::ContextError;
 use hexchat_api::FieldValue;
+use hexchat_api::ListItem;
 use hexchat_api::ThreadSafeContext;
 use hexchat_api::ThreadSafeListIterator;
 use hexchat_api::ThreadSafeFieldValue;
@@ -160,7 +161,7 @@ impl Tor for Option<hexchat_api::ListIterator> {
     }
 }
 
-impl Tor for Result<Option<String>, ContextError> {
+impl Tor for Result<String, ContextError> {
     type Target = String;
     
     /// Convert `Result<Option<String>, ContextError>` to 
@@ -169,21 +170,13 @@ impl Tor for Result<Option<String>, ContextError> {
     fn tor(&self) -> Result<Self::Target, TrackerError>
     {
         match self {
-            Ok(opt) => {
-                match opt {
-                    Some(s) => Ok(s.clone()),
-                    None => Err(
-                        TrackerError::NoneError("Failed to retrieve the \
-                                                 requested `Context`."
-                                                 .to_string())),
-                }
-            },
+            Ok(s) => Ok(s.to_string()),
             Err(err) => Err(TrackerError::from(err.clone())),
         }
     }
 }
 
-impl Tor for Result<Option<ThreadSafeListIterator>, ContextError> {
+impl Tor for Result<ThreadSafeListIterator, ContextError> {
     type Target = ThreadSafeListIterator;
     
     /// Converts `Result<Option<ThreadSafeListIterator>` to 
@@ -192,14 +185,7 @@ impl Tor for Result<Option<ThreadSafeListIterator>, ContextError> {
     fn tor(&self) -> Result<Self::Target, TrackerError>
     {
         match self {
-            Ok(opt) => {
-                match opt {
-                    Some(list) => Ok(list.clone()),
-                    None => Err(
-                        TrackerError::NoneError("TreadSafeListIterator \
-                                                 unavailable.".to_string())),
-                }
-            },
+            Ok(iter) => Ok(iter.clone()),
             Err(err) => Err(TrackerError::from(err.clone())),
         }
     }
@@ -218,10 +204,28 @@ impl Tor for Option<&FieldValue> {
     }
 }
 
+impl Tor for Result<Vec<ListItem>, hexchat_api::ListError> {
+    type Target = Vec<ListItem>;
+    fn tor(&self) -> Result<Self::Target, TrackerError>
+    {
+        match self {
+            Ok(list) => Ok(list.clone()),
+            Err(err) => Err(TrackerError::from(err.clone())),
+        }
+    }
+}
 
 
-
-
+impl Tor for Result<ListItem, hexchat_api::ListError> {
+    type Target = ListItem;
+    fn tor(&self) -> Result<Self::Target, TrackerError>
+    {
+        match self {
+            Ok(list_item) => Ok(list_item.clone()),
+            Err(err) => Err(TrackerError::from(err.clone())),
+        }
+    }
+}
 
 
 

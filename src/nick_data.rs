@@ -371,7 +371,7 @@ impl NickData {
         }() {
             Ok(rec_added) => rec_added,
             Err(err) => {
-                self.hc.threadsafe().print(&format!("ERROR: {}", err));
+                let _ = self.hc.threadsafe().print(&format!("ERROR: {}", err));
                 false
             },
         }

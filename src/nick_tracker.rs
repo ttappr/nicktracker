@@ -315,7 +315,7 @@ impl NickTracker {
                 let user_list = cx.list_get("users").tor()?.to_vec();
                 let dbconn    = me.nick_data.get_dbconnection();
 
-                for user in &user_list {
+                for user in &user_list.tor()? {
                     let [nick, 
                          channel, 
                          host, 
@@ -406,7 +406,7 @@ impl NickTracker {
                     if who_lc == nick.to_lowercase()    || 
                        who_lc == account.to_lowercase() 
                     {
-                        let user_item = user.get_item();
+                        let user_item = user.get_item().tor()?;
                         let info = me.get_user_info_ts(&user_item, &cx)?;
                         let [nick, _channel, 
                              host, account, 
@@ -524,7 +524,7 @@ impl NickTracker {
                         let nick = user.get_field("nick").tor()?;
                         
                         if nick == old_nick || nick == new_nick {
-                            let user_item = user.get_item();
+                            let user_item = user.get_item().tor()?;
                             let [_nick, 
                                  channel, 
                                  host, 
