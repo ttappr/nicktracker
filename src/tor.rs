@@ -16,7 +16,6 @@
 use crate::tracker_error::*;
 
 use hexchat_api::Context;
-use hexchat_api::ContextError;
 use hexchat_api::FieldValue;
 use hexchat_api::ListItem;
 use hexchat_api::ThreadSafeContext;
@@ -58,7 +57,7 @@ impl Tor for serde_json::Value {
     }
 }
 
-impl Tor for Result<hexchat_api::FieldValue, hexchat_api::ListError> {
+impl Tor for Result<hexchat_api::FieldValue, hexchat_api::HexchatError> {
     type Target = String;
     
     /// Convert the result of `ListIterator` functions that return a `Result`
@@ -128,7 +127,7 @@ impl Tor for Option<ThreadSafeListIterator> {
     }
 }
 
-impl Tor for Result<ThreadSafeFieldValue, hexchat_api::ListError> {
+impl Tor for Result<ThreadSafeFieldValue, hexchat_api::HexchatError> {
     type Target = String;
     
     /// Converts `Result<ThreadSafeFieldValue, ListError>` to 
@@ -161,7 +160,7 @@ impl Tor for Option<hexchat_api::ListIterator> {
     }
 }
 
-impl Tor for Result<String, ContextError> {
+impl Tor for Result<String, hexchat_api::HexchatError> {
     type Target = String;
     
     /// Convert `Result<Option<String>, ContextError>` to 
@@ -176,7 +175,7 @@ impl Tor for Result<String, ContextError> {
     }
 }
 
-impl Tor for Result<ThreadSafeListIterator, ContextError> {
+impl Tor for Result<ThreadSafeListIterator, hexchat_api::HexchatError> {
     type Target = ThreadSafeListIterator;
     
     /// Converts `Result<Option<ThreadSafeListIterator>` to 
@@ -204,7 +203,7 @@ impl Tor for Option<&FieldValue> {
     }
 }
 
-impl Tor for Result<Vec<ListItem>, hexchat_api::ListError> {
+impl Tor for Result<Vec<ListItem>, hexchat_api::HexchatError> {
     type Target = Vec<ListItem>;
     fn tor(&self) -> Result<Self::Target, TrackerError>
     {
@@ -216,7 +215,7 @@ impl Tor for Result<Vec<ListItem>, hexchat_api::ListError> {
 }
 
 
-impl Tor for Result<ListItem, hexchat_api::ListError> {
+impl Tor for Result<ListItem, hexchat_api::HexchatError> {
     type Target = ListItem;
     fn tor(&self) -> Result<Self::Target, TrackerError>
     {
