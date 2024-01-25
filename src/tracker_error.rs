@@ -22,6 +22,7 @@ pub enum TrackerError {
     ListError       (Box<dyn error::Error>),
     RegexError      (Box<dyn error::Error>),
     WebError        (Box<dyn error::Error>),
+    MiscHexchatError(Box<dyn error::Error>),
     ConnectionError (String),
     IPLookupError   (String),
     JsonFmtError    (String),
@@ -71,6 +72,7 @@ impl fmt::Display for TrackerError {
             JsonError       (err) |
             RegexError      (err) |
             ListError       (err) |
+            MiscHexchatError(err) |
             WebError        (err) => write!(f, "Tracker Error: {}", &**err),
             ConnectionError (msg) => write!(f, "Connection Error: {}", msg),
             JsonFmtError    (msg) => write!(f, "Tracker Error: {}", msg),
@@ -129,11 +131,16 @@ impl From<hexchat_api::HexchatError> for TrackerError {
     fn from(error: hexchat_api::HexchatError) -> Self {
         use hexchat_api::HexchatError as HE;
         match error {
-            HE::ListFieldNotFound(_)      |
-            HE::ListIteratorDropped(_)    |
-            HE::ListIteratorNotStarted(_) |
-            HE::ListNotFound(_)           => ListError(Box::new(error)),
-            err => ContextError(Box::new(err)),
+            HE::ListFieldNotFound(_)        |
+            HE::ListIteratorDropped(_)      |
+            HE::ListIteratorNotStarted(_)   |
+            HE::ListNotFound(_)           
+                => ListError(Box::new(error)),
+            HE::ContextAcquisitionFailed(_) |
+            HE::ContextDropped(_)           |
+            HE::ContextOperationFailed(_)   
+                => ContextError(Box::new(error)),
+            _   => MiscHexchatError(Box::new(error)),
         }
     }
 }

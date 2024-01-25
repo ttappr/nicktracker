@@ -146,12 +146,10 @@ fn change_nick(_hc: &Hexchat, word: &[String], udata: &UserData) -> Eat
 fn dbtoggle(_hc      : &Hexchat,
             word     : &[String],
             word_eol : &[String],
-            udata    : &UserData
-           ) -> Eat
+            udata    : &UserData) 
+    -> Eat
 {
-    udata.apply_mut(|nt: &mut NickTracker| { 
-                        nt.on_cmd_dbtoggle(word, word_eol)
-                    })
+    udata.apply_mut(|nt: &mut NickTracker| nt.on_cmd_dbtoggle(word, word_eol))
 }
 
 /// Callback wrapper for the `/IPLOOKUP` command wich forwards to `NickTracker`
@@ -160,12 +158,10 @@ fn dbtoggle(_hc      : &Hexchat,
 fn iplookup(_hc      : &Hexchat,
             word     : &[String],
             word_eol : &[String],
-            udata    : &UserData
-           ) -> Eat
+            udata    : &UserData) 
+    -> Eat
 {
-    udata.apply_mut(|nt: &mut NickTracker| { 
-                        nt.on_cmd_ip_lookup(word, word_eol)
-                    })
+    udata.apply_mut(|nt: &mut NickTracker| nt.on_cmd_ip_lookup(word, word_eol))
 }
 
 /// Callback wrapper for `/DBUPDATE` which fowards to `NickTracker`, 
@@ -174,12 +170,10 @@ fn iplookup(_hc      : &Hexchat,
 fn dbupdate(_hc      : &Hexchat,
             word     : &[String],
             word_eol : &[String],
-            udata    : &UserData
-           ) -> Eat
+            udata    : &UserData) 
+    -> Eat
 {
-    udata.apply_mut(|nt: &mut NickTracker| { 
-                        nt.on_cmd_dbupdate(word, word_eol)
-                    })
+    udata.apply_mut(|nt: &mut NickTracker| nt.on_cmd_dbupdate(word, word_eol))
 }
 
 /// Command wrapper for `/DBWHO` which forwards to `NickTracker`, 
@@ -188,11 +182,9 @@ fn dbupdate(_hc      : &Hexchat,
 fn dbwho(_hc      : &Hexchat,
          word     : &[String],
          word_eol : &[String],
-         udata    : &UserData
-        ) -> Eat
+         udata    : &UserData) 
+    -> Eat
 {
-    udata.apply_mut(|nt: &mut NickTracker| {
-                        nt.on_cmd_dbwho(word, word_eol)
-                    })
+    udata.apply_mut(|nt: &mut NickTracker| nt.on_cmd_dbwho(word, word_eol))
 }
 
