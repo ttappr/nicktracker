@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
  
 [dependencies]
 fallible-iterator = "0.3"
-hexchat-api = "0.3.*"
+hexchat-api = "^0.3"
 #hexchat-api = { path = "../hexchat-api" }
 #hexchat-api = { git = "https://github.com/ttappr/hexchat-api.git"}
 regex = "1"

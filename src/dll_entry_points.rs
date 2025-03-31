@@ -4,6 +4,8 @@
 //! and the Hexchat text event handlers.
 //! 
 
+use std::sync::Mutex;
+
 use threadpool::ThreadPool;
 
 use hexchat_api::*;
@@ -24,7 +26,7 @@ const DBWHO_HELP    : &str = "/DBWHO <user> Lists the nicknames for the given \
 const DBUPDATE_HELP : &str = "/DBUPDATE Updates the nick database with user \
                               data for all users in the channel.";
 
-pub (crate) static mut THREAD_POOL: Option<ThreadPool> = None;
+pub (crate) static THREAD_POOL: Mutex<Option<ThreadPool>> = Mutex::new(None);
 
 // Register the entry points of the plugin.
 //
@@ -49,9 +51,7 @@ fn plugin_info() -> PluginInfo {
 fn plugin_init(hc: &'static Hexchat) -> i32 {
     hc.print("Nicktracker loaded");
     
-    unsafe {
-        THREAD_POOL = Some(ThreadPool::new(1)); 
-    }
+    *THREAD_POOL.lock().unwrap() = Some(ThreadPool::new(1)); 
     
     let udata = UserData::shared(NickTracker::new(hc));
     
@@ -79,10 +79,9 @@ fn plugin_init(hc: &'static Hexchat) -> i32 {
 ///
 fn plugin_deinit(hc: &Hexchat) -> i32 {
     hc.print("Nicktracker unloaded");
-    unsafe { 
-        if let Some(tp) = &THREAD_POOL.take() {
-            tp.join();
-        }
+
+    if let Some(tp) = &THREAD_POOL.lock().unwrap().take() {
+        tp.join();
     }
     1
 }
@@ -95,10 +94,8 @@ fn plugin_deinit(hc: &Hexchat) -> i32 {
 pub (crate) fn thread_task<F>(job: F) 
 where F: FnOnce() + Send + 'static
 {
-    unsafe {
-        if let Some(tp) = &THREAD_POOL {
-            tp.execute(job)
-        }
+    if let Some(tp) = THREAD_POOL.lock().unwrap().as_ref() {
+        tp.execute(job)
     }
 }
 
@@ -107,12 +104,10 @@ where F: FnOnce() + Send + 'static
 /// * The number of current tasks in the threaded task handler queue.
 ///
 pub (crate) fn num_queued_tasks() -> usize {
-    unsafe {
-        if let Some(tp) = &THREAD_POOL {
-            tp.queued_count()
-        } else {
-            999
-        }
+    if let Some(tp) = THREAD_POOL.lock().unwrap().as_ref() {
+        tp.queued_count()
+    } else {
+        999
     }
 }
         

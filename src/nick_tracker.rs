@@ -8,7 +8,6 @@ use serde_json::Value;
 use serde_json::from_str as parse_json;
 use std::collections::HashSet;
 use std::time::Duration;
-use std::u32;
 use ureq::Agent;
 use ureq::AgentBuilder;
 
