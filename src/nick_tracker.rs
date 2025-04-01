@@ -9,7 +9,6 @@ use serde_json::from_str as parse_json;
 use std::collections::HashSet;
 use std::time::Duration;
 use ureq::Agent;
-use ureq::AgentBuilder;
 
 use crate::nick_data::*;
 use crate::tor::*;
@@ -73,10 +72,10 @@ impl NickTracker {
             _dlim_expr  : Regex::new(DLIM_EXPR).unwrap(),
             chan_set    : HashSet::<ChanData>::new(),
             nick_data   : NickData::new(hc),
-            http_agent  : AgentBuilder::new()
-                          .timeout_read(
-                              Duration::from_secs(SERVER_TIMEOUT)
-                          ).build(),
+            http_agent  : Agent::config_builder()
+                          .timeout_global(
+                              Some(Duration::from_secs(SERVER_TIMEOUT))
+                          ).build().into(),
         }
     }
     
@@ -612,6 +611,7 @@ impl NickTracker {
                         ip_addr: &str) 
         -> Result<[String;8], TrackerError> 
     {
+        use ureq::http::status::StatusCode;
         const LATITUDE_IDX   : usize = 5;
         const LONGITUDE_IDX  : usize = 6;
         const MAP_ZOOM_LEVEL : i32   = 6;
@@ -629,11 +629,11 @@ impl NickTracker {
             add_link(&mut ip_info);
             Ok(ip_info)
         } else {
-            let req = format!("http://ip-api.com/json/{}", ip_addr);
-            let rsp = self.http_agent.get(&req).call()?;
+            let     req = format!("http://ip-api.com/json/{}", ip_addr);
+            let mut rsp = self.http_agent.get(&req).call()?;
             
-            if rsp.status_text() == "OK" {
-                let rsp_text = rsp.into_string()?;
+            if rsp.status() == StatusCode::OK {
+                let rsp_text = rsp.body_mut().read_to_string()?;
                 let rsp_json = parse_json::<Value>(&rsp_text)?;
                 
                 if rsp_json["status"] == "success" {
@@ -664,8 +664,8 @@ impl NickTracker {
             } else {
                 // status_text() != "OK".
                 Err( IPLookupError(
-                        format!("IPLOOKUP ERROR: {}", 
-                                rsp.status_text())) )
+                        format!("IPLOOKUP ERROR: {:?}", 
+                                rsp.status())) )
             }
         }
     }
