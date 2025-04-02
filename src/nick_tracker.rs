@@ -9,6 +9,7 @@ use serde_json::from_str as parse_json;
 use std::collections::HashSet;
 use std::time::Duration;
 use ureq::Agent;
+use format as fm;
 
 use crate::nick_data::*;
 use crate::tor::*;
@@ -185,10 +186,10 @@ impl NickTracker {
             if let Some(list) = ListIterator::new("channels") {
                 for item in list {
                     if let Ok(FV::StringVal(network)) 
-                                    = item.get_field("network") {
+                            = item.get_field("network") {
                             
                     if let Ok(FV::StringVal(channel)) 
-                                    = item.get_field("channel") {
+                            = item.get_field("channel") {
                                     
                         if !channel.starts_with('#') {
                             continue;
@@ -200,21 +201,19 @@ impl NickTracker {
                         // if this is a `one_way == true` operation.   
                         
                         if !(self.chan_set.contains(&chan_data)
-                                || one_way && !all_on) 
+                            || one_way && !all_on) 
                         {
                             self.chan_set.insert(chan_data);
-                            self.write(
-                                &format!("🔎\t\x0311\
-                                         Nick Tracker enabled for ({}/{}).",
-                                         network, channel));        
+                            self.write(&fm!("🔎\t\x0311\
+                                            Nick Tracker enabled for ({}/{}).",
+                                            network, channel));        
                                          
                         } else if self.chan_set.contains(&chan_data) 
                                 && !(one_way && all_on) {
                             self.chan_set.remove(&chan_data);
-                            self.write(
-                                &format!("🔎\t\x0311\
-                                         Nick Tracker disabled for ({}/{}).",
-                                         network, channel));        
+                            self.write(&fm!("🔎\t\x0311\
+                                            Nick Tracker disabled for ({}/{}).",
+                                            network, channel));        
                         }
                     }}
                 }
@@ -265,16 +264,15 @@ impl NickTracker {
                          isp, _lat, _lon, link] = &ip_info;
                          
                     me.write_ts_ctx(
-                        &format!("🌎\t\x0311IPLOOKUP ({}): {}, {} ({}) [{}]",
-                                 ip_addr, city, region, country, isp),
+                        &fm!("🌎\t\x0311IPLOOKUP ({}): {}, {} ({}) [{}]",
+                             ip_addr, city, region, country, isp),
                         &cx
                     );
-                    me.write_ts_ctx(&format!("\x0311    MAP: {}", link), &cx);
+                    me.write_ts_ctx(&fm!("\x0311    MAP: {}", link), &cx);
                 },
                 Err(err) => {
-                    me.write_ts_ctx(
-                        &format!("🌎\t\x0313IPLOOKUP ({}): failed. {}", 
-                                 &ip_addr, err), &cx);
+                    me.write_ts_ctx(&fm!("🌎\t\x0313IPLOOKUP ({}): failed. {}", 
+                                         &ip_addr, err), &cx);
                 },
             }
         });
@@ -286,8 +284,8 @@ impl NickTracker {
     ///
     pub (crate)
     fn on_cmd_dbupdate(&mut self, 
-                        word      : &[String], 
-                        _word_eol : &[String]) 
+                       word      : &[String], 
+                       _word_eol : &[String]) 
         -> Eat  
     {
         if word.len() > 1 {
@@ -301,10 +299,9 @@ impl NickTracker {
         let me = self.clone();
         let hc = self.hc.threadsafe();
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
-        
+
         thread_task(move || {
-            #[allow(clippy::single_match)]
-            match || -> Result<(), TrackerError> {
+            if let Err(err) = || -> Result<(), TrackerError> {
                 let mut no_host_count = 0;
                 
                 cx.print("🤔\t\x0311DBUPDATE:")?;
@@ -315,33 +312,31 @@ impl NickTracker {
 
                 for user in &user_list.tor()? {
                     let [nick, 
-                         channel, 
-                         host, 
-                         account, 
-                         address, 
-                         network] = me.get_user_info_ts(user, &cx)?;
-                         
+                        channel, 
+                        host, 
+                        account, 
+                        address, 
+                        network] = me.get_user_info_ts(user, &cx)?;
+                        
                     if host.is_empty() {
                         if no_host_count < NO_HOST_TOLERANCE {
-                           no_host_count += 1;
-                           continue;
+                            no_host_count += 1;
+                            continue;
                         } else {
                             return Err(
                                 TrackerError::ConnectionError(
                                     "Empty host string received. \
-                                     This can indicate a lost connection."
+                                    This can indicate a lost connection."
                                     .to_string()));
                         }
                     }
-                         
+                        
                     if me.nick_data.update(&nick,    &channel, &host,
                                            &account, &address, &network, 
                                            dbconn.as_ref())
                     {
-                        cx.print(
-                            &format!("\x0311+ new record added for user \
-                                      \x0309\x02{}.", &nick)
-                        )?;
+                        cx.print(&fm!("\x0311+ new record added for user \
+                                       \x0309\x02{}.", &nick))?;
                         count = 1;
                     } else {
                         if count % 200 == 0 {
@@ -353,13 +348,8 @@ impl NickTracker {
                 cx.print("\x0311DBUPDATE Done.\n")?;
                 Ok(())
             }() {
-                Err(err) => {
-                    me.write_ts_ctx(
-                        &format!("⚠️\t\x0313Error during update: {}", err),
-                        &cx
-                    );
-                },
-                _ => (),
+                me.write_ts_ctx(&fm!("⚠️\t\x0313Error during update: {}", err), 
+                                &cx);
             }
         });
         Eat::All
@@ -391,9 +381,8 @@ impl NickTracker {
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread_task(move || {
-            #[allow(clippy::single_match)]
-            match || -> Result<(), TrackerError> {
-                cx.print(&format!("🕵️\t\x0311DBWHO: \x0309\x02{}", who))?;
+            if let Err(err) = || -> Result<(), TrackerError> {
+                cx.print(&fm!("🕵️\t\x0311DBWHO: \x0309\x02{}", who))?;
                 let mut found = false;
                 let     users = cx.list_get("users").tor()?;
                 
@@ -420,18 +409,13 @@ impl NickTracker {
                 if !found {
                     let channel = cx.get_info("channel").tor()?;
                     me.write_ts_ctx(
-                        &format!("⚠️\t\x0313Nickname {} not currently in {}.", 
-                                 who, channel), &cx);
+                        &fm!("⚠️\t\x0313Nickname {} not currently in {}.", 
+                             who, channel), &cx);
                 }
                 Ok(())
             }() {
-                Err(err) => {
-                    me.write_ts_ctx(
-                        &format!("⚠️\t\x0313Error during update: {}", err),
-                        &cx
-                    );
-                },
-                _ => {},
+                me.write_ts_ctx(&fm!("⚠️\t\x0313Error during update: {}", err),
+                                &cx);
             }
         });
         Eat::All
@@ -467,8 +451,8 @@ impl NickTracker {
         let cx      = hc.get_context().unwrap();
         
         thread_task(move || {
-            me.write_ts_ctx(&format!("🕵️\t\x0311USER JOINED: \x0309\x02{}", 
-                                     nick), &cx);
+            me.write_ts_ctx(&fm!("🕵️\t\x0311USER JOINED: \x0309\x02{}", nick), 
+                            &cx);
             
             me.nick_data.update(&nick,    &channel, &host, 
                                 &account, &address, &network, None);
@@ -514,8 +498,7 @@ impl NickTracker {
             let cx = hc.get_context().unwrap();
             
             thread_task(move || {
-                #[allow(clippy::single_match)]
-                match || -> Result<(), TrackerError> {
+                if let Err(err) = || -> Result<(), TrackerError> {
                 
                     for user in cx.list_get("users").tor()? {
 
@@ -539,10 +522,7 @@ impl NickTracker {
                     }
                     Ok(())
                 }() {
-                    Err(err) => {
-                        me.write(&format!("⚠️\t\x0313{}", err));
-                    },
-                    _ => {},
+                    me.write(&fm!("⚠️\t\x0313{}", err));
                 }
             });
             Eat::None
@@ -584,7 +564,7 @@ impl NickTracker {
     
             addr.split(|c: char| ".-:".contains(c))
                 .map(|s| u32::from_str_radix(s, 16).unwrap_or(0))
-                .map(|i| format!("{:x}", i))
+                .map(|i| fm!("{:x}", i))
                 .collect::<Vec<_>>()
                 .join(":")
             
@@ -593,7 +573,7 @@ impl NickTracker {
             let addr = m.as_str().to_lowercase();
             addr.split(|c: char| ".-:".contains(c))
                 .map(|s| s.parse::<u32>().unwrap_or(0))
-                .map(|i| format!("{:?}", i))
+                .map(|i| fm!("{:?}", i))
                 .collect::<Vec<_>>()
                 .join(".")
 
@@ -619,9 +599,9 @@ impl NickTracker {
         fn add_link(ip_info: &mut [String]) {
             let lat    = &ip_info[LATITUDE_IDX];
             let lon    = &ip_info[LONGITUDE_IDX];
-            let link   = format!("http://maps.google.com/maps/place/\
-                                  {},{}/@{},{},{}z",
-                                 lat, lon, lat, lon, MAP_ZOOM_LEVEL);
+            let link   = fm!("http://maps.google.com/maps/place/\
+                             {},{}/@{},{},{}z",
+                             lat, lon, lat, lon, MAP_ZOOM_LEVEL);
             ip_info[7] = link;
         }
 
@@ -629,7 +609,7 @@ impl NickTracker {
             add_link(&mut ip_info);
             Ok(ip_info)
         } else {
-            let     req = format!("http://ip-api.com/json/{}", ip_addr);
+            let     req = fm!("http://ip-api.com/json/{}", ip_addr);
             let mut rsp = self.http_agent.get(&req).call()?;
             
             if rsp.status() == StatusCode::OK {
@@ -656,16 +636,13 @@ impl NickTracker {
                     Ok(info)
                 } else {
                     // "status" != "success".
-                    Err( IPLookupError(
-                            format!("IPLOOKUP ERROR ({}): {}", 
-                                    rsp_json["query"], 
-                                    rsp_json["message"])) )
+                    Err( IPLookupError(fm!("IPLOOKUP ERROR ({}): {}", 
+                                           rsp_json["query"], 
+                                           rsp_json["message"])) )
                 }
             } else {
                 // status_text() != "OK".
-                Err( IPLookupError(
-                        format!("IPLOOKUP ERROR: {:?}", 
-                                rsp.status())) )
+                Err( IPLookupError(fm!("IPLOOKUP ERROR: {:?}", rsp.status())) )
             }
         }
     }
