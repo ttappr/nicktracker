@@ -115,24 +115,21 @@ pub (crate) fn num_queued_tasks() -> usize {
 /// Callback wrapper. Forwards the 'Join' text event to `NickTracker` for 
 /// handling. 
 ///
-fn user_join(_hc: &Hexchat, word: &[String], udata: &UserData) -> Eat
-{
+fn user_join(_hc: &Hexchat, word: &[String], udata: &UserData) -> Eat {
     udata.apply_mut(|nt: &mut NickTracker| { nt.on_user_join(word) })
 }
 
 /// Callback wrapper. Forwards 'Quit' text events on to `NickTracker` for
 /// handling.
 ///
-fn user_quit(_hc: &Hexchat, word: &[String], udata: &UserData) -> Eat
-{
+fn user_quit(_hc: &Hexchat, word: &[String], udata: &UserData) -> Eat {
     udata.apply(|nt: &NickTracker| { nt.on_user_quit(word) })
 }
 
 /// Callback wrapper. Forwards 'Change Nick' text events on to `NickTracker` for
 /// handling.
 ///
-fn change_nick(_hc: &Hexchat, word: &[String], udata: &UserData) -> Eat
-{
+fn change_nick(_hc: &Hexchat, word: &[String], udata: &UserData) -> Eat {
     udata.apply(|nt: &NickTracker| nt.on_user_change_nick(word))
 }
 
@@ -145,7 +142,7 @@ fn dbtoggle(_hc      : &Hexchat,
             udata    : &UserData) 
     -> Eat
 {
-    udata.apply_mut(|nt: &mut NickTracker| nt.on_cmd_dbtoggle(word, word_eol))
+    udata.apply(|nt: &NickTracker| nt.on_cmd_dbtoggle(word, word_eol))
 }
 
 /// Callback wrapper for the `/IPLOOKUP` command wich forwards to `NickTracker`
@@ -157,7 +154,7 @@ fn iplookup(_hc      : &Hexchat,
             udata    : &UserData) 
     -> Eat
 {
-    udata.apply_mut(|nt: &mut NickTracker| nt.on_cmd_ip_lookup(word, word_eol))
+    udata.apply(|nt: &NickTracker| nt.on_cmd_ip_lookup(word, word_eol))
 }
 
 /// Callback wrapper for `/DBUPDATE` which fowards to `NickTracker`, 
@@ -169,7 +166,7 @@ fn dbupdate(_hc      : &Hexchat,
             udata    : &UserData) 
     -> Eat
 {
-    udata.apply_mut(|nt: &mut NickTracker| nt.on_cmd_dbupdate(word, word_eol))
+    udata.apply(|nt: &NickTracker| nt.on_cmd_dbupdate(word, word_eol))
 }
 
 /// Command wrapper for `/DBWHO` which forwards to `NickTracker`, 
@@ -181,6 +178,6 @@ fn dbwho(_hc      : &Hexchat,
          udata    : &UserData) 
     -> Eat
 {
-    udata.apply_mut(|nt: &mut NickTracker| nt.on_cmd_dbwho(word, word_eol))
+    udata.apply(|nt: &NickTracker| nt.on_cmd_dbwho(word, word_eol))
 }
 

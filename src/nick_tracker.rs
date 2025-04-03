@@ -49,6 +49,8 @@ const NO_HOST_TOLERANCE : i32   =  5;
 ///
 type ChanData = (String, String);
 
+/// Shared state for the `NickTracker` instances.
+/// 
 struct NickTrackerData {
     hc          : &'static Hexchat,
     ipv6_expr   : Regex,
@@ -497,8 +499,8 @@ impl NickTracker {
             me.rdata().nick_data.update(&nick,    &channel, &host, 
                                         &account, &address, &network);
 
-            // Critical section - don't shuffle records for different users 
-            // together.
+            // Critical section per channel - don't shuffle records for 
+            // different users together.
             let mutex = me.chan_mutex(&chan_data).unwrap();
             let _lock = mutex.lock().unwrap();
 

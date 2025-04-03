@@ -240,7 +240,7 @@ impl NickData {
     ///
     fn regex_internal(ctx        : &SQLContext,
                       expr_cache : &Arc<Mutex<RegexMap>>) 
-                      
+
         -> SQLResult<String> 
     {
         use rusqlite::Error as SQLError;
@@ -277,8 +277,8 @@ impl NickData {
     /// match result as a string (`Regex.find()` is applied).
     ///
     fn add_regex_find_function(&self,
-                               conn : &ConnectionWrapper
-                              ) -> Result<(), TrackerError> 
+                               conn : &ConnectionWrapper) 
+        -> Result<(), TrackerError> 
     {
         let expr_cache = self.expr_cache.clone();
         conn.create_scalar_function(
@@ -299,8 +299,8 @@ impl NickData {
     /// param 2.
     ///
     fn add_regex_match_function(&self,
-                                conn : &ConnectionWrapper,
-                               ) -> Result<(), TrackerError> 
+                                conn : &ConnectionWrapper) 
+        -> Result<(), TrackerError> 
     {
         let expr_cache = self.expr_cache.clone();
         conn.create_scalar_function(
@@ -439,8 +439,9 @@ impl NickData {
     ///
     pub (crate)
     fn get_ip_addr_info(&self, 
-                        ip: &str
-                       ) -> Result<[String;8], TrackerError> 
+                        ip: &str) 
+
+        -> Result<[String;8], TrackerError> 
     {
         let conn = ConnectionWrapper::open(&self.path)?;
         conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
@@ -630,8 +631,7 @@ impl NickData {
     /// current so users don't have to delete their current database and start
     /// a new one if the schema changes at all.
     ///
-    fn update_user_table(&self) -> Result<(), TrackerError>
-    {
+    fn update_user_table(&self) -> Result<(), TrackerError> {
         let conn = ConnectionWrapper::open(&self.path)?;
 
         // Extract the column names of the 'users' table. 
