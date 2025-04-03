@@ -308,7 +308,6 @@ impl NickTracker {
             
                 let mut count = 0;
                 let user_list = cx.list_get("users").tor()?.to_vec();
-                let dbconn    = me.nick_data.get_dbconnection();
 
                 for user in &user_list.tor()? {
                     let [nick, 
@@ -332,8 +331,7 @@ impl NickTracker {
                     }
                         
                     if me.nick_data.update(&nick,    &channel, &host,
-                                           &account, &address, &network, 
-                                           dbconn.as_ref())
+                                           &account, &address, &network)
                     {
                         cx.print(&fm!("\x0311+ new record added for user \
                                        \x0309\x02{}.", &nick))?;
@@ -453,9 +451,9 @@ impl NickTracker {
         thread_task(move || {
             me.write_ts_ctx(&fm!("🕵️\t\x0311USER JOINED: \x0309\x02{}", nick), 
                             &cx);
-            
+
             me.nick_data.update(&nick,    &channel, &host, 
-                                &account, &address, &network, None);
+                                &account, &address, &network);
                                 
             me.nick_data.print_related(&nick,    &host,    &account, 
                                        &address, &network, &me, &cx);
@@ -516,8 +514,7 @@ impl NickTracker {
                                  
                             me.nick_data.update(&new_nick, &channel, 
                                                 &host,     &account,  
-                                                &address,  &network, 
-                                                None);
+                                                &address,  &network);
                         }
                     }
                     Ok(())
@@ -647,23 +644,3 @@ impl NickTracker {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

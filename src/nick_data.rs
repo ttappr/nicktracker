@@ -11,9 +11,11 @@ use rusqlite::functions::Context as SQLContext;
 use rusqlite::functions::FunctionFlags;
 use rusqlite::Result as SQLResult;
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::MutexGuard;
 use std::time::Duration;
 
 use hexchat_api::*;
@@ -45,6 +47,42 @@ const NO_PARAMS: () = ();
 // The type for the map that caches `Regex`s used in queries.
 //
 type RegexMap = HashMap<String, Arc<Regex>>;
+
+
+/// Used to lock database access.
+static DATABASE_LOCK: Mutex<()> = Mutex::new(());
+
+
+/// This struct is used to wrap the SQLite connection. It holds a lock guard on 
+/// `DATABASE_LOCK` to help ensure only one thread can access a database at a 
+/// time. All connection requests should go through this struct and not 
+/// circumvent it.
+/// 
+pub(crate) 
+struct ConnectionWrapper {
+    conn  : Connection,
+    _lock : MutexGuard<'static, ()>,
+}
+
+impl ConnectionWrapper {
+    /// Creates a new `ConnectionWrapper` object. The code in this application
+    /// only keeps a connection as long as needed.
+    /// 
+    pub fn open(path: &str) -> Result<Self, rusqlite::Error> {
+        let lock = DATABASE_LOCK.lock().unwrap();
+        let conn = Connection::open(path)?;
+        Ok(ConnectionWrapper { conn, _lock: lock })
+    }
+
+}
+
+impl Deref for ConnectionWrapper {
+    type Target = Connection;
+    fn deref(&self) -> &Self::Target {
+        &self.conn
+    }
+}
+
 
 /// The `NickData` object interacts with the nickname/user info database.
 /// It handles the queries and other operations.
@@ -104,19 +142,6 @@ impl NickData {
     ///
     fn find_obfuscated_ip(&self, host: &str) -> String {
         self.obfip_expr.find(host).map_or("", |m| m.as_str()).to_string()
-    }
-    
-    /// Gets a connection to the database. This can be used to hold the 
-    /// connection open for any numer of calls to `self.update()`, rather than
-    /// letting the update function open the connection on each invokaction.
-    ///   
-    pub (crate)
-    fn get_dbconnection(&self) -> Option<Connection> {
-        if let Ok(conn) = Connection::open(&self.path) {
-            Some(conn)
-        } else {
-            None
-        }
     }
 
     /// Prints the DB records related to the user info given in the paramters.
@@ -187,7 +212,7 @@ impl NickData {
     /// info; and another for the resolved geolocation data for IP's. 
     ///
     fn create_database(path: &str) -> Result<(), TrackerError> {
-        let conn = Connection::open(path)?;
+        let conn = ConnectionWrapper::open(path)?;
         conn.execute(
             r" CREATE TABLE users (
                    nick, channel, host, account NOT NULL, address NOT NULL,
@@ -251,7 +276,7 @@ impl NickData {
     /// match result as a string (`Regex.find()` is applied).
     ///
     fn add_regex_find_function(&self,
-                               conn : &Connection
+                               conn : &ConnectionWrapper
                               ) -> Result<(), TrackerError> 
     {
         let expr_cache = self.expr_cache.clone();
@@ -269,11 +294,11 @@ impl NickData {
     /// Expressions are cached, and SQLite also uses a form of LRU cache so
     /// the function doesn't need to be reexecuted if given params SQLite 
     /// has already seen passed to it. This match function will return a 
-    /// boolean to SQLite if the expression as param 1 matches the data as
+    /// boolean to SQLite if the expression as param 1 matches the data asm
     /// param 2.
     ///
     fn add_regex_match_function(&self,
-                                conn : &Connection,
+                                conn : &ConnectionWrapper,
                                ) -> Result<(), TrackerError> 
     {
         let expr_cache = self.expr_cache.clone();
@@ -307,24 +332,16 @@ impl NickData {
               host      : &str, 
               account   : &str, 
               address   : &str, 
-              network   : &str,
-              dbconn    : Option<&Connection>
-             ) -> bool
+              network   : &str) 
+
+        -> bool
     {
-        match || -> SQLResult<bool> {
+        let result = || -> SQLResult<bool> {
             let mut rec_added   = false;
             let     network_esc = NickData::sql_escape(network);
             let     obfip       = self.find_obfuscated_ip(host);
             
-            let conn_local;
-            let conn =  {
-                if let Some(dbconn) = dbconn {
-                    dbconn
-                } else {
-                    conn_local = Connection::open(&self.path)?;
-                    &conn_local
-                }
-            };
+            let conn = ConnectionWrapper::open(&self.path)?;
             
             conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
             
@@ -368,12 +385,15 @@ impl NickData {
                     rec_added = true;
             }
             Ok(rec_added)
-        }() {
-            Ok(rec_added) => rec_added,
+        }();
+        match result {
+            Ok(rec_added) => {
+                rec_added
+            },
             Err(err) => {
                 let _ = self.hc.threadsafe().print(&format!("ERROR: {}", err));
                 false
-            },
+            }
         }
     }
     
@@ -403,7 +423,7 @@ impl NickData {
                           ) -> bool
     {
         || -> SQLResult<()> {
-            let conn = Connection::open(&self.path)?;
+            let conn = ConnectionWrapper::open(&self.path)?;
             conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
 
             conn.execute(
@@ -426,7 +446,7 @@ impl NickData {
                         ip: &str
                        ) -> Result<[String;8], TrackerError> 
     {
-        let conn = Connection::open(&self.path)?;
+        let conn = ConnectionWrapper::open(&self.path)?;
         conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
         
         // Record data: (ip, city, region, country, isp, lat, lon, link)
@@ -464,7 +484,7 @@ impl NickData {
     {
         use regex::escape;
         
-        let conn = Connection::open(&self.path)?;
+        let conn = ConnectionWrapper::open(&self.path)?;
         conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
 
         let nick_expr = {
@@ -615,7 +635,7 @@ impl NickData {
     ///
     fn update_user_table(&self) -> Result<(), TrackerError>
     {
-        let conn = Connection::open(&self.path)?;
+        let conn = ConnectionWrapper::open(&self.path)?;
 
         // Extract the column names of the 'users' table. 
         let mut stmt = conn.prepare(r"PRAGMA table_info(users)")?;
