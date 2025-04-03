@@ -123,7 +123,7 @@ impl NickTracker {
 
     /// "Activates" the window the user currently is interacting with.
     ///
-    fn activate(&mut self) {
+    fn activate(&self) {
         let chan_data = self.get_chan_data();
         self.chans_insert(chan_data);
         self.write("🔎\t\x0311Nick Tracker enabled for this channel.");
@@ -131,7 +131,7 @@ impl NickTracker {
     
     /// "Deactivates" the window the user is currently interacting with.
     ///
-    fn deactivate(&mut self) {
+    fn deactivate(&self) {
         let chan_data = self.get_chan_data();
         self.chans_remove(&chan_data);
         self.write("🔎\t\x0311Nick Tracker disabled for this channel.");
@@ -198,7 +198,7 @@ impl NickTracker {
     /// it sets it inactive - and vice versa.
     ///
     pub (crate)
-    fn on_cmd_dbtoggle(&mut self, 
+    fn on_cmd_dbtoggle(&self, 
                        word      : &[String], 
                        _word_eol : &[String]) 
         -> Eat 
@@ -281,7 +281,7 @@ impl NickTracker {
     ///   location.
     ///
     pub (crate)
-    fn on_cmd_ip_lookup(&mut self, 
+    fn on_cmd_ip_lookup(&self, 
                         word      : &[String], 
                         _word_eol : &[String]) 
         -> Eat  
@@ -326,7 +326,7 @@ impl NickTracker {
     /// the channel and adds their info to the database.
     ///
     pub (crate)
-    fn on_cmd_dbupdate(&mut self, 
+    fn on_cmd_dbupdate(&self, 
                        word      : &[String], 
                        _word_eol : &[String]) 
         -> Eat  
@@ -401,7 +401,7 @@ impl NickTracker {
     /// used, different locations they've logged in from, etc.
     ///
     pub (crate)
-    fn on_cmd_dbwho(&mut self,
+    fn on_cmd_dbwho(&self,
                     word      : &[String],
                     _word_eol : &[String]) 
         -> Eat
@@ -466,7 +466,7 @@ impl NickTracker {
     /// info and adds it to the database.
     ///
     pub (crate)
-    fn on_user_join(&mut self, 
+    fn on_user_join(&self, 
                     word: &[String]) 
         -> Eat 
     {
