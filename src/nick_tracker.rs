@@ -6,7 +6,12 @@
 use regex::Regex;
 use serde_json::Value;
 use serde_json::from_str as parse_json;
-use std::collections::HashSet;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::RwLock;
+use std::sync::RwLockReadGuard;
+use std::sync::RwLockWriteGuard;
 use std::time::Duration;
 use ureq::Agent;
 use format as fm;
@@ -44,19 +49,23 @@ const NO_HOST_TOLERANCE : i32   =  5;
 ///
 type ChanData = (String, String);
 
+struct NickTrackerData {
+    hc          : &'static Hexchat,
+    ipv6_expr   : Regex,
+    ipv4_expr   : Regex,
+    _dlim_expr  : Regex,
+    chan_set    : HashMap<ChanData, Arc<Mutex<()>>>,
+    nick_data   : NickData,
+    http_agent  : Agent,
+}
+
 /// The primary struct/class of the tracker. It provides handlers for the
 /// registered commands.
 ///
 #[derive(Clone)]
 pub (crate) 
 struct NickTracker {
-    hc          : &'static Hexchat,
-    ipv6_expr   : Regex,
-    ipv4_expr   : Regex,
-    _dlim_expr  : Regex,
-    chan_set    : HashSet::<ChanData>,
-    nick_data   : NickData,
-    http_agent  : Agent,
+    data: Arc<RwLock<NickTrackerData>>,
 }
 
 impl NickTracker {
@@ -66,25 +75,57 @@ impl NickTracker {
     /// 
     pub (crate)
     fn new(hc: &'static Hexchat) -> Self {
-        NickTracker { 
-            hc,
-            ipv6_expr   : Regex::new(IPV6_EXPR).unwrap(),
-            ipv4_expr   : Regex::new(IPV4_EXPR).unwrap(),
-            _dlim_expr  : Regex::new(DLIM_EXPR).unwrap(),
-            chan_set    : HashSet::<ChanData>::new(),
-            nick_data   : NickData::new(hc),
-            http_agent  : Agent::config_builder()
-                          .timeout_global(
-                              Some(Duration::from_secs(SERVER_TIMEOUT))
-                          ).build().into(),
+        Self { 
+            data: Arc::new(RwLock::new(NickTrackerData {
+                hc,
+                ipv6_expr   : Regex::new(IPV6_EXPR).unwrap(),
+                ipv4_expr   : Regex::new(IPV4_EXPR).unwrap(),
+                _dlim_expr  : Regex::new(DLIM_EXPR).unwrap(),
+                chan_set    : HashMap::new(),
+                nick_data   : NickData::new(hc),
+                http_agent  : Agent::config_builder()
+                              .timeout_global(
+                                  Some(Duration::from_secs(SERVER_TIMEOUT))
+                              ).build().into(),
+    
+            }))
         }
     }
-    
+    /// Returns a mutable reference to the instance's data.
+    fn wdata(&self) -> RwLockWriteGuard<NickTrackerData> {
+        self.data.write().unwrap()
+    }
+
+    /// Returns an immutable reference to the instance's data.
+    fn rdata(&self) -> RwLockReadGuard<NickTrackerData> {
+        self.data.read().unwrap()
+    }
+
+    /// Inserts channel data into channel set.
+    fn chans_insert(&self, chan_data: ChanData) {
+        self.wdata().chan_set.insert(chan_data, Arc::new(Mutex::new(())));
+    }
+
+    /// Removes channel data from channel set.
+    fn chans_remove(&self, chan_data: &ChanData) {
+        self.wdata().chan_set.remove(chan_data);
+    }
+
+    /// Checks if the channel data is in the channel set.
+    fn chans_contains(&self, chan_data: &ChanData) -> bool {
+        self.rdata().chan_set.contains_key(chan_data)
+    }
+
+    /// Returns a mutex for the channel if it exists in the channel set.
+    fn chan_mutex(&self, chan_data: &ChanData) -> Option<Arc<Mutex<()>>> {
+        self.rdata().chan_set.get(chan_data).cloned()
+    }
+
     /// "Activates" the window the user currently is interacting with.
     ///
     fn activate(&mut self) {
         let chan_data = self.get_chan_data();
-        self.chan_set.insert(chan_data);
+        self.chans_insert(chan_data);
         self.write("🔎\t\x0311Nick Tracker enabled for this channel.");
     }
     
@@ -92,7 +133,7 @@ impl NickTracker {
     ///
     fn deactivate(&mut self) {
         let chan_data = self.get_chan_data();
-        self.chan_set.remove(&chan_data);
+        self.chans_remove(&chan_data);
         self.write("🔎\t\x0311Nick Tracker disabled for this channel.");
     }
     
@@ -100,14 +141,14 @@ impl NickTracker {
     ///
     fn is_active(&self) -> bool {
         let chan_data = self.get_chan_data();
-        self.chan_set.contains(&chan_data)
+        self.chans_contains(&chan_data)
     }
     
     /// Outputs text to the current active Hexchat window.
     ///
     pub (crate)
     fn write(&self, msg: &str) {
-        self.hc.print(msg);
+        self.rdata().hc.print(msg);
     }
     
     /// Like `write()` but takes a `Context` reference which sends the text
@@ -117,8 +158,9 @@ impl NickTracker {
     pub (crate)
     fn write_ctx(&self, msg: &str, ctx: &Context) {
         if ctx.print(msg).is_err() {
-            self.hc.print("⚠️\t\x0313Context grab failed for this message...");
-            self.hc.print(msg);
+            self.rdata().hc.print("⚠️\t\x0313Context grab failed for this \
+                                   message...");
+            self.rdata().hc.print(msg);
         }
     }
     
@@ -133,8 +175,9 @@ impl NickTracker {
     pub (crate)
     fn write_ts_ctx(&self, msg: &str, ctx: &ThreadSafeContext) {
         if ctx.print(msg).is_err() {
-            self.hc.print("⚠️\t\x0313Context grab failed for this message...");
-            self.hc.print(msg);
+            self.rdata().hc.print("⚠️\t\x0313Context grab failed for this \
+                                   message...");
+            self.rdata().hc.print(msg);
         }
     }
     
@@ -146,8 +189,8 @@ impl NickTracker {
     ///
     fn get_chan_data(&self) -> (String, String) {
         // These operations shouldn't fail if this is executed from main thread.
-        let network = self.hc.get_info("network").unwrap();
-        let channel = self.hc.get_info("channel").unwrap();
+        let network = self.rdata().hc.get_info("network").unwrap();
+        let channel = self.rdata().hc.get_info("channel").unwrap();
         (network, channel)
     }
     
@@ -200,17 +243,17 @@ impl NickTracker {
                         // Channels already in the desired state are skipped
                         // if this is a `one_way == true` operation.   
                         
-                        if !(self.chan_set.contains(&chan_data)
+                        if !(self.chans_contains(&chan_data)
                             || one_way && !all_on) 
                         {
-                            self.chan_set.insert(chan_data);
+                            self.chans_insert(chan_data);
                             self.write(&fm!("🔎\t\x0311\
                                             Nick Tracker enabled for ({}/{}).",
                                             network, channel));        
                                          
-                        } else if self.chan_set.contains(&chan_data) 
+                        } else if self.chans_contains(&chan_data) 
                                 && !(one_way && all_on) {
-                            self.chan_set.remove(&chan_data);
+                            self.wdata().chan_set.remove(&chan_data);
                             self.write(&fm!("🔎\t\x0311\
                                             Nick Tracker disabled for ({}/{}).",
                                             network, channel));        
@@ -253,7 +296,7 @@ impl NickTracker {
         }
         let ip_addr = self.normalize_ip_addr(&word[1]);
         let me      = self.clone();
-        let hc      = me.hc.threadsafe();
+        let hc      = me.rdata().hc.threadsafe();
         let cx      = hc.get_context().expect("Context grab shouldn't fail.");    
         
         thread_task(move || {
@@ -297,7 +340,7 @@ impl NickTracker {
             return Eat::All;
         }
         let me = self.clone();
-        let hc = self.hc.threadsafe();
+        let hc = self.rdata().hc.threadsafe();
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
 
         thread_task(move || {
@@ -330,8 +373,8 @@ impl NickTracker {
                         }
                     }
                         
-                    if me.nick_data.update(&nick,    &channel, &host,
-                                           &account, &address, &network)
+                    if me.rdata().nick_data.update(&nick,    &channel, &host,
+                                                   &account, &address, &network)
                     {
                         cx.print(&fm!("\x0311+ new record added for user \
                                        \x0309\x02{}.", &nick))?;
@@ -375,7 +418,7 @@ impl NickTracker {
         let who_lc = word[1].to_lowercase();
         
         let me = self.clone();
-        let hc = self.hc.threadsafe();
+        let hc = self.rdata().hc.threadsafe();
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
         
         thread_task(move || {
@@ -397,9 +440,9 @@ impl NickTracker {
                              host, account, 
                              address, network] = info;
                              
-                        me.nick_data.print_related(&nick,    &host, 
-                                                   &account, &address, 
-                                                   &network, &me, &cx);
+                        me.rdata().nick_data.print_related(&nick,    &host, 
+                                                           &account, &address, 
+                                                           &network, &me, &cx);
                         found = true;
                         break;
                     }
@@ -443,20 +486,27 @@ impl NickTracker {
                                      word[2].clone());
 
         let address = self.normalize_ip_addr(&host);
-        let network = self.hc.get_info("network").unwrap();
-        let hc      = self.hc.threadsafe();
+        let network = self.rdata().hc.get_info("network").unwrap();
+        let hc      = self.rdata().hc.threadsafe();
         let me      = self.clone();
         let cx      = hc.get_context().unwrap();
+
+        let chan_data = self.get_chan_data();
         
         thread_task(move || {
+            me.rdata().nick_data.update(&nick,    &channel, &host, 
+                                        &account, &address, &network);
+
+            // Critical section - don't shuffle records for different users 
+            // together.
+            let mutex = me.chan_mutex(&chan_data).unwrap();
+            let _lock = mutex.lock().unwrap();
+
             me.write_ts_ctx(&fm!("🕵️\t\x0311USER JOINED: \x0309\x02{}", nick), 
                             &cx);
 
-            me.nick_data.update(&nick,    &channel, &host, 
-                                &account, &address, &network);
-                                
-            me.nick_data.print_related(&nick,    &host,    &account, 
-                                       &address, &network, &me, &cx);
+            me.rdata().nick_data.print_related(&nick,    &host,    &account, 
+                                               &address, &network, &me, &cx);
         });
         Eat::None
     }
@@ -492,7 +542,7 @@ impl NickTracker {
             let new_nick = word[1].clone();
             
             let me = self.clone();
-            let hc = self.hc.threadsafe();
+            let hc = self.rdata().hc.threadsafe();
             let cx = hc.get_context().unwrap();
             
             thread_task(move || {
@@ -512,9 +562,9 @@ impl NickTracker {
                                  network] = me.get_user_info_ts(&user_item, 
                                                                 &cx)?;
                                  
-                            me.nick_data.update(&new_nick, &channel, 
-                                                &host,     &account,  
-                                                &address,  &network);
+                            me.rdata().nick_data.update(&new_nick, &channel, 
+                                                        &host,     &account,  
+                                                        &address,  &network);
                         }
                     }
                     Ok(())
@@ -555,7 +605,7 @@ impl NickTracker {
     ///
     fn normalize_ip_addr(&self, host: &str) -> String {
     
-        if let Some(m) = self.ipv6_expr.find(host) {
+        if let Some(m) = self.rdata().ipv6_expr.find(host) {
        
             let addr = m.as_str().to_lowercase();
     
@@ -565,7 +615,7 @@ impl NickTracker {
                 .collect::<Vec<_>>()
                 .join(":")
             
-        } else if let Some(m) = self.ipv4_expr.find(host) {
+        } else if let Some(m) = self.rdata().ipv4_expr.find(host) {
         
             let addr = m.as_str().to_lowercase();
             addr.split(|c: char| ".-:".contains(c))
@@ -602,12 +652,13 @@ impl NickTracker {
             ip_info[7] = link;
         }
 
-        if let Ok(mut ip_info) = self.nick_data.get_ip_addr_info(ip_addr) {
+        if let Ok(mut ip_info) 
+            = self.rdata().nick_data.get_ip_addr_info(ip_addr) {
             add_link(&mut ip_info);
             Ok(ip_info)
         } else {
             let     req = fm!("http://ip-api.com/json/{}", ip_addr);
-            let mut rsp = self.http_agent.get(&req).call()?;
+            let mut rsp = self.rdata().http_agent.get(&req).call()?;
             
             if rsp.status() == StatusCode::OK {
                 let rsp_text = rsp.body_mut().read_to_string()?;
@@ -626,7 +677,8 @@ impl NickTracker {
 
                     add_link(&mut info);
 
-                    self.nick_data.update_ip_addr_info(&info[0], &info[1], 
+                    self.rdata()
+                        .nick_data.update_ip_addr_info(&info[0], &info[1], 
                                                        &info[2], &info[3], 
                                                        &info[4], &info[5],
                                                        &info[6]);

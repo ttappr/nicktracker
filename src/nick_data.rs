@@ -239,8 +239,9 @@ impl NickData {
     ///   invocation parameter for the target string.
     ///
     fn regex_internal(ctx        : &SQLContext,
-                      expr_cache : &Arc<Mutex<RegexMap>>
-                     ) -> SQLResult<String> 
+                      expr_cache : &Arc<Mutex<RegexMap>>) 
+                      
+        -> SQLResult<String> 
     {
         use rusqlite::Error as SQLError;
 
@@ -357,13 +358,8 @@ impl NickData {
                 ")?;
             let mut rows = statement.query([nick,    channel, host, 
                                             account, address, &network_esc])?;
-            let found = {
-                match rows.next() {
-                    Ok(opt) => opt.is_some(),
-                    Err(_) => false,
-                }
-            };
-            if found {
+
+            if let Ok(Some(_)) = rows.next() {
                 // Record exists, update it's datetime_seen field.
                 conn.execute(
                     r" UPDATE  users 
@@ -419,8 +415,8 @@ impl NickData {
                            country  : &str,
                            isp      : &str,
                            lat      : &str,
-                           lon      : &str
-                          ) -> bool
+                           lon      : &str) 
+        -> bool
     {
         || -> SQLResult<()> {
             let conn = ConnectionWrapper::open(&self.path)?;
@@ -479,8 +475,9 @@ impl NickData {
                       host      : &str,
                       account   : &str,
                       address   : &str,
-                      network   : &str
-                     ) -> Result<Vec<[String;4]>, TrackerError>
+                      network   : &str) 
+
+        -> Result<Vec<[String;4]>, TrackerError>
     {
         use regex::escape;
         

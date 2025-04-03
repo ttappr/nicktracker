@@ -52,18 +52,19 @@ fn plugin_init(hc: &'static Hexchat) -> i32 {
     hc.print("Nicktracker loaded");
     
     *THREAD_POOL.lock().unwrap() = Some(ThreadPool::new(4)); 
+
+    let nt    = NickTracker::new(hc);
+    let udata = || UserData::boxed(nt.clone());
     
-    let udata = UserData::shared(NickTracker::new(hc));
+    hc.hook_command("DBUPDATE", Norm, dbupdate,  DBUPDATE_HELP, udata());
+    hc.hook_command("DBWHO",    Norm, dbwho,     DBWHO_HELP,    udata());
+    hc.hook_command("IPLOOKUP", Norm, iplookup,  IPLOOKUP_HELP, udata());
+    hc.hook_command("DBTOGGLE", Norm, dbtoggle,  DBTOGGLE_HELP, udata());
     
-    hc.hook_command("DBUPDATE", Norm, dbupdate,  DBUPDATE_HELP, udata.clone());
-    hc.hook_command("DBWHO",    Norm, dbwho,     DBWHO_HELP,    udata.clone());
-    hc.hook_command("IPLOOKUP", Norm, iplookup,  IPLOOKUP_HELP, udata.clone());
-    hc.hook_command("DBTOGGLE", Norm, dbtoggle,  DBTOGGLE_HELP, udata.clone());
-    
-    hc.hook_print("Join",               Norm, user_join,        udata.clone());
-    hc.hook_print("Quit",               Norm, user_quit,        udata.clone());
-    hc.hook_print("Change Nick",        Norm, change_nick,      udata.clone());
-    hc.hook_print("Your Nick Changing", Norm, change_nick,      udata);
+    hc.hook_print("Join",               Norm, user_join,        udata());
+    hc.hook_print("Quit",               Norm, user_quit,        udata());
+    hc.hook_print("Change Nick",        Norm, change_nick,      udata());
+    hc.hook_print("Your Nick Changing", Norm, change_nick,      udata());
     
     1
 }
