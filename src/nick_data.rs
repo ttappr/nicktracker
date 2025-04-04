@@ -16,16 +16,12 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
-use std::time::Duration;
 
 use hexchat_api::*;
 
 use crate::nick_tracker::*;
 use crate::tracker_error::*;
 
-/// How long a thread will wait for the DB to become available if it's locked.
-///
-const DB_BUSY_TIMEOUT: u64 = 5; // Seconds.
 
 /// Maximum number of rows of data to print when listing possible matches for
 /// a given user.
@@ -51,7 +47,6 @@ type RegexMap = HashMap<String, Arc<Regex>>;
 
 /// Used to lock database access.
 static DATABASE_LOCK: Mutex<()> = Mutex::new(());
-
 
 /// This struct is used to wrap the SQLite connection. It holds a lock guard on 
 /// `DATABASE_LOCK` to help ensure only one thread can access a database at a 
@@ -344,8 +339,6 @@ impl NickData {
             
             let conn = ConnectionWrapper::open(&self.path)?;
             
-            conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
-            
             let mut statement = conn.prepare(
                 r" SELECT * FROM users
                    WHERE   nick    = ?
@@ -420,7 +413,6 @@ impl NickData {
     {
         || -> SQLResult<()> {
             let conn = ConnectionWrapper::open(&self.path)?;
-            conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
 
             conn.execute(
                 r" INSERT INTO ip_addr_info
@@ -444,7 +436,6 @@ impl NickData {
         -> Result<[String;8], TrackerError> 
     {
         let conn = ConnectionWrapper::open(&self.path)?;
-        conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
         
         // Record data: (ip, city, region, country, isp, lat, lon, link)
         let row: [String;8] = conn.query_row(
@@ -483,7 +474,6 @@ impl NickData {
         use regex::escape;
         
         let conn = ConnectionWrapper::open(&self.path)?;
-        conn.busy_timeout(Duration::from_secs(DB_BUSY_TIMEOUT)).unwrap();
 
         let nick_expr = {
             // Form the regular expression that'll be used to scan through

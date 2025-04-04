@@ -1,6 +1,6 @@
 [package]
 name = "nicktracker"
-version = "0.1.8"
+version = "0.1.9"
 authors = ["ttappr <tmtappr@gmail.com>"]
 edition = "2018"
 
@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
  
 [dependencies]
 fallible-iterator = "^0.3"
-hexchat-api = "^0.3"
+hexchat-api = "^0.3.6"
 #hexchat-api = { path = "../hexchat-api" }
 #hexchat-api = { git = "https://github.com/ttappr/hexchat-api.git"}
 regex = "^1.11"
