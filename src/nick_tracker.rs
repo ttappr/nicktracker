@@ -57,6 +57,7 @@ struct NickTrackerData {
     ipv4_expr   : Regex,
     _dlim_expr  : Regex,
     chan_set    : HashMap<ChanData, Arc<Mutex<()>>>,
+    chan_update : HashMap<ChanData, Arc<Mutex<()>>>,
     nick_data   : NickData,
     http_agent  : Agent,
 }
@@ -84,6 +85,7 @@ impl NickTracker {
                 ipv4_expr   : Regex::new(IPV4_EXPR).unwrap(),
                 _dlim_expr  : Regex::new(DLIM_EXPR).unwrap(),
                 chan_set    : HashMap::new(),
+                chan_update : HashMap::new(),
                 nick_data   : NickData::new(hc),
                 http_agent  : Agent::config_builder()
                               .timeout_global(
@@ -121,6 +123,15 @@ impl NickTracker {
     /// Returns a mutex for the channel if it exists in the channel set.
     fn chan_mutex(&self, chan_data: &ChanData) -> Option<Arc<Mutex<()>>> {
         self.rdata().chan_set.get(chan_data).cloned()
+    }
+
+    fn chan_update_mutex(&self, chan_data: ChanData) 
+    
+        -> Arc<Mutex<()>> 
+    {
+        self.wdata().chan_update.entry(chan_data)
+                                .or_insert(Arc::new(Mutex::new(())))
+                                .clone()
     }
 
     /// "Activates" the window the user currently is interacting with.
@@ -344,55 +355,67 @@ impl NickTracker {
         let me = self.clone();
         let hc = self.rdata().hc.threadsafe();
         let cx = hc.get_context().expect("Context grab shouldn't fail.");
+        let cd = self.get_chan_data();
+        let mutex = me.chan_update_mutex(cd);
 
         thread_task(move || {
-            if let Err(err) = || -> Result<(), TrackerError> {
-                let mut no_host_count = 0;
-                
-                cx.print("🤔\t\x0311DBUPDATE:")?;
-            
-                let mut count = 0;
-                let user_list = cx.list_get("users").tor()?.to_vec();
+            let lockres = mutex.try_lock();
 
-                for user in &user_list.tor()? {
-                    let [nick, 
-                        channel, 
-                        host, 
-                        account, 
-                        address, 
-                        network] = me.get_user_info_ts(user, &cx)?;
-                        
-                    if host.is_empty() {
-                        if no_host_count < NO_HOST_TOLERANCE {
-                            no_host_count += 1;
-                            continue;
+            // Inly perform the command if no /DBUPDATE is already in progress
+            // on the channel.
+            if let Ok(_lock) = lockres {
+                if let Err(err) = || -> Result<(), TrackerError> {
+                    let mut no_host_count = 0;
+                    
+                    cx.print("🤔\t\x0311DBUPDATE:")?;
+                
+                    let mut count = 0;
+                    let user_list = cx.list_get("users").tor()?.to_vec();
+
+                    for user in &user_list.tor()? {
+                        let [nick, 
+                            channel, 
+                            host, 
+                            account, 
+                            address, 
+                            network] = me.get_user_info_ts(user, &cx)?;
+                            
+                        if host.is_empty() {
+                            if no_host_count < NO_HOST_TOLERANCE {
+                                no_host_count += 1;
+                                continue;
+                            } else {
+                                return Err(
+                                    TrackerError::ConnectionError(
+                                        "Empty host string received. \
+                                        This can indicate a lost connection."
+                                        .to_string()));
+                            }
+                        }
+                            
+                        if me.rdata().nick_data.update(&nick, &channel, &host, 
+                                                       &account, &address, 
+                                                       &network)
+                        {
+                            cx.print(&fm!("\x0311+ new record added for user \
+                                        \x0309\x02{}.", &nick))?;
+                            count = 1;
                         } else {
-                            return Err(
-                                TrackerError::ConnectionError(
-                                    "Empty host string received. \
-                                    This can indicate a lost connection."
-                                    .to_string()));
+                            if count % 200 == 0 {
+                                cx.print("\x0311- processing...")?;
+                            }
+                            count += 1;
                         }
                     }
-                        
-                    if me.rdata().nick_data.update(&nick,    &channel, &host,
-                                                   &account, &address, &network)
-                    {
-                        cx.print(&fm!("\x0311+ new record added for user \
-                                       \x0309\x02{}.", &nick))?;
-                        count = 1;
-                    } else {
-                        if count % 200 == 0 {
-                            cx.print("\x0311- processing...")?;
-                        }
-                        count += 1;
-                    }
+                    cx.print("\x0311DBUPDATE Done.\n")?;
+                    Ok(())
+                }() {
+                    let msg = fm!("⚠️\t\x0313Error during update: {}", err);
+                    me.write_ts_ctx(&msg, &cx);
                 }
-                cx.print("\x0311DBUPDATE Done.\n")?;
-                Ok(())
-            }() {
-                me.write_ts_ctx(&fm!("⚠️\t\x0313Error during update: {}", err), 
-                                &cx);
+            } else {
+                cx.aprint("\x0313DBUPDATE already in progress \
+                           on this channel.");
             }
         });
         Eat::All

@@ -66,7 +66,7 @@ impl ConnectionWrapper {
     pub fn open(path: &str) -> Result<Self, rusqlite::Error> {
         let lock = DATABASE_LOCK.lock().unwrap();
         let conn = Connection::open(path)?;
-        Ok(ConnectionWrapper { conn, _lock: lock })
+        Ok(Self { conn, _lock: lock })
     }
 
 }
