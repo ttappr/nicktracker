@@ -361,7 +361,7 @@ impl NickTracker {
         thread_task(move || {
             let lockres = mutex.try_lock();
 
-            // Inly perform the command if no /DBUPDATE is already in progress
+            // Only perform the command if no /DBUPDATE is already in progress
             // on the channel.
             if let Ok(_lock) = lockres {
                 if let Err(err) = || -> Result<(), TrackerError> {
