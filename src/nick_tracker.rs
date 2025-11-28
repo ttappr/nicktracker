@@ -96,12 +96,12 @@ impl NickTracker {
         }
     }
     /// Returns a mutable reference to the instance's data.
-    fn wdata(&self) -> RwLockWriteGuard<NickTrackerData> {
+    fn wdata(&self) -> RwLockWriteGuard<'_, NickTrackerData> {
         self.data.write().unwrap()
     }
 
     /// Returns an immutable reference to the instance's data.
-    fn rdata(&self) -> RwLockReadGuard<NickTrackerData> {
+    fn rdata(&self) -> RwLockReadGuard<'_, NickTrackerData> {
         self.data.read().unwrap()
     }
 
